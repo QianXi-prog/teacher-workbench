@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="教师工作台">
-<title>教师工作台 · 云同步安全版</title>
+<title>教师工作台 · v1.2</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -65,7 +65,7 @@ button,input,select,textarea{font:inherit;color:inherit} button{cursor:pointer}
 .stat .label{font-size:12px;color:var(--muted)}.stat .value{font-size:29px;font-weight:850;margin-top:9px}.stat .sub{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.55}
 .section{margin-top:13px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}.section-head h3{margin:0;font-size:15px}.section-head span{font-size:11px;color:var(--muted)}
 .lower{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr);gap:13px;margin-top:13px}
-.timeline{display:grid;gap:7px}.todo{display:grid;grid-template-columns:55px 12px 1fr auto;gap:8px;align-items:center;padding:9px 6px;border-radius:13px}.todo:hover{background:rgba(255,255,255,.5)}
+.timeline{display:grid;gap:7px}.todo{display:grid;grid-template-columns:88px 12px 1fr auto;gap:8px;align-items:center;padding:9px 6px;border-radius:13px}.todo:hover{background:rgba(255,255,255,.5)}
 .todo.done{opacity:.55}.todo.done .todo-title{text-decoration:line-through}.todo-time{font-weight:800;color:var(--deep);font-size:12px}.bullet{width:10px;height:10px;border-radius:50%;border:3px solid var(--primary);background:white}
 .tag,.pill{display:inline-block;padding:5px 8px;border-radius:999px;font-size:10px}.tag{background:#ecf8fb;color:var(--deep)}.pill.ok{background:#e7f7f1;color:#238c6e}.pill.warn{background:#fff5dc;color:#9e741b}.pill.bad{background:#ffecef;color:#a85167}
 .table-wrap{overflow:auto;border-radius:15px} table{width:100%;border-collapse:collapse;min-width:620px;font-size:12px} th,td{padding:10px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle} th{color:var(--muted);background:rgba(255,255,255,.4);font-weight:750;position:sticky;top:0;z-index:2}
@@ -148,7 +148,7 @@ body.auth-locked .app{visibility:hidden}
     <div>云端自动同步：<b style="color:#299977">已开启</b></div>
     <div class="user-line" id="userEmail">未登录</div>
     <button class="side-logout" id="logoutBtn">退出登录</button>
-    <div style="margin-top:7px">版本：Teacher Workbench v1.1</div>
+    <div style="margin-top:7px">版本：Teacher Workbench v1.2</div>
   </div>
 </aside>
 <div class="drawer-mask" id="drawerMask"></div>
@@ -186,7 +186,7 @@ body.auth-locked .app{visibility:hidden}
     <div class="field"><label>当前班级重命名</label><input id="renameClass"></div>
     <div class="field"><label>新增班级</label><input id="newClass" placeholder="例如：2026级11班"></div>
   </div>
-  <div class="modal-actions"><button class="btn danger" id="deleteClass">删除当前班级</button><button class="btn" id="cloneClass">复制当前班级</button><button class="btn" id="closeClass">关闭</button><button class="btn" id="renameClassSave">重命名</button><button class="btn primary" id="addClass">添加</button></div>
+  <div class="modal-actions"><button class="btn danger" id="deleteClass">删除当前班级</button><button class="btn" id="cloneClass" title="仅复制课程表等可复用框架，不复制学生和历史记录">复制班级框架</button><button class="btn" id="closeClass">关闭</button><button class="btn" id="renameClassSave">重命名</button><button class="btn primary" id="addClass">添加</button></div>
 </div></div>
 
 <div class="modal-mask" id="themeModal"><div class="modal">
@@ -200,7 +200,7 @@ body.auth-locked .app{visibility:hidden}
   <div class="import-box">
     <div style="font-size:32px">📥</div>
     <b>选择 Excel / Word / 图片 / JSON 文件</b>
-    <p style="font-size:12px;color:var(--muted);line-height:1.6">Excel 会根据表头自动识别学生档案、成绩、作业、请假、课程表、待办；Word 会提取文本归档；课程表图片可进行 OCR 尝试识别；JSON 可恢复本工作台备份。</p>
+    <p style="font-size:12px;color:var(--muted);line-height:1.6">Excel 会根据表头自动识别学生档案、成绩、作业、请假、课程表、待办；Word 会优先识别表格并自动分类，正文同时归档；课程表图片可进行 OCR 尝试识别；JSON 可恢复本工作台备份。</p>
     <input id="fileInput" type="file" accept=".xlsx,.xls,.docx,.json,.png,.jpg,.jpeg,.webp">
     <button class="btn primary" onclick="document.getElementById('fileInput').click()">选择文件</button>
   </div>
@@ -240,7 +240,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const n=v=>Number(v)||0;
 
 const defaultState={
- version:"1.1",
+ version:"1.2",
  classes:[{id:"c10",name:"2026级10班"},{id:"c11",name:"2026级11班"}],
  currentClassId:"c10", theme:"blue",
  todos:[
@@ -255,7 +255,7 @@ const defaultState={
   {id:uid(),classId:"c10",day:"周三",period:3,subject:"英语",teacher:"我",room:"本班"},
   {id:uid(),classId:"c11",day:"周二",period:2,subject:"英语",teacher:"我",room:"2026级11班"}
  ],
- students:[], exams:[], scores:[], homework:[], leaves:[],
+ students:[], exams:[], scores:[], homework:[], leaves:[], attendance:[],
  parents:[], visits:[], meetings:[], notices:[], seats:[], classMeetings:[], duties:[], dorms:[], committee:[], activities:[],
  _syncMeta:{lastLocalChange:null,lastSyncedAt:null}
 };
@@ -269,8 +269,9 @@ let syncBusy=false;
 function cacheKey(){return currentUser ? CACHE_PREFIX+currentUser.id : LEGACY_LS}
 function normalizeState(x){
  const y=Object.assign(structuredClone(defaultState),x||{});
- y.version="1.1";
+ y.version="1.2";
  delete y.cloud;
+ ["classes","todos","notes","reminders","growth","traces","prep","schedules","students","exams","scores","homework","leaves","attendance","parents","visits","meetings","notices","seats","classMeetings","duties","dorms","committee","activities"].forEach(k=>{if(!Array.isArray(y[k]))y[k]=[]});
  y._syncMeta=Object.assign({lastLocalChange:null,lastSyncedAt:null},y._syncMeta||{});
  return y
 }
@@ -286,7 +287,7 @@ function writeLocal(){
 }
 function save(msg="已自动保存",sync=true){
  if(currentUser){
-  state.version="1.1";
+  state.version="1.2";
   state._syncMeta=state._syncMeta||{};
   state._syncMeta.lastLocalChange=new Date().toISOString();
   writeLocal();
@@ -347,25 +348,43 @@ function showPage(name){
 }
 
 function renderDashboard(){
- const students=scoped(state.students),leaves=scoped(state.leaves).filter(x=>x.date===today()&&!x.cancelled),acts=scoped(state.activities).filter(x=>(x.date||"").slice(0,7)===today().slice(0,7)),todos=scoped(state.todos).filter(x=>x.date===today()).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
- const leaveCount=leaves.length, present=Math.max(0,students.length-leaveCount);
+ const students=scoped(state.students),acts=scoped(state.activities).filter(x=>(x.date||"").slice(0,7)===today().slice(0,7)),todos=scoped(state.todos).filter(x=>x.date===today()).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+ const attendance=scoped(state.attendance).find(x=>x.date===today());
  const teaching=scoped(state.todos).filter(x=>x.category==="教学类"&&!x.done).length,management=scoped(state.todos).filter(x=>x.category==="管理类"&&!x.done).length;
  const attendanceRows=getRecentAttendance();
+ const attendanceValue=attendance?attendance.present:"—";
+ const attendanceSub=attendance?`<span class="pill ok">出勤 ${n(attendance.present)}</span> <span class="pill warn">迟到 ${n(attendance.late)}</span> <span class="pill warn">请假 ${n(attendance.leave)}</span> <span class="pill bad">缺勤 ${n(attendance.absent)}</span>`:`<span class="pill warn">今日考勤尚未登记</span>`;
  document.getElementById("page-dashboard").innerHTML=
- pageHeader("教师工作台",`${curClass().name} · 今天也把班级和课堂安排得井井有条。`,`<button class="btn" onclick="openImport()">导入资料</button><button class="btn primary" onclick="openRecord('todo')">＋ 快速新增</button>`) +
+ pageHeader("教师工作台",`${curClass().name} · 数据以实际录入内容为准。`,`<button class="btn" onclick="openAttendance()">登记今日考勤</button><button class="btn" onclick="openImport()">导入资料</button><button class="btn primary" onclick="openRecord('todo')">＋ 快速新增</button>`) +
  `<div class="grid-3">
-  <div class="card stat"><div class="label">👥 班级人数</div><div class="value">${students.length||58}<small style="font-size:13px"> 人</small></div><div class="sub">学生档案 ${students.length?"已录入 "+students.length+" 人":"示例显示 58 人，导入学生后自动更新"}</div></div>
-  <div class="card stat"><div class="label">☀️ 今日出勤</div><div class="value">${students.length?present:55}<small style="font-size:13px"> 人</small></div><div class="sub"><span class="pill warn">请假 ${students.length?leaveCount:2}</span> <span class="pill ok">待核实 0</span></div></div>
-  <div class="card stat"><div class="label">🎈 本月活动</div><div class="value">${acts.length}<small style="font-size:13px"> 项</small></div><div class="sub">点击“班级事务 → 活动档案”可维护</div></div>
+  <div class="card stat"><div class="label">👥 班级人数</div><div class="value">${students.length}<small style="font-size:13px"> 人</small></div><div class="sub">${students.length?`学生档案已录入 ${students.length} 人`:'尚未导入学生档案，不显示示例人数'}</div></div>
+  <div class="card stat"><div class="label">☀️ 今日出勤</div><div class="value">${attendanceValue}${attendance?'<small style="font-size:13px"> 人</small>':''}</div><div class="sub">${attendanceSub}</div></div>
+  <div class="card stat"><div class="label">🎈 本月活动</div><div class="value">${acts.length}<small style="font-size:13px"> 项</small></div><div class="sub">点击“班级事务 → 活动档案”维护活动记录</div></div>
  </div>
  <div class="section kpi-strip"><div class="mini-kpi">教学类未完成 <b>${teaching}</b></div><div class="mini-kpi">管理类未完成 <b>${management}</b></div><div class="mini-kpi">今日待办 <b>${todos.length}</b></div><div class="mini-kpi">本月请假 <b>${scoped(state.leaves).filter(x=>(x.date||"").slice(0,7)===today().slice(0,7)).length}</b></div></div>
  <div class="lower">
-  <div class="glass"><div class="section-head"><h3>今日待办</h3><span>${todos.length} 项</span></div>${todos.length?`<div class="timeline">${todos.map(x=>`<div class="todo ${x.done?"done":""}"><div class="todo-time">${esc(x.time||"--:--")}</div><div class="bullet"></div><div class="todo-title">${esc(x.title)}</div><button class="btn tiny" onclick="toggleDone('todos','${x.id}')">${x.done?"恢复":"打卡"}</button></div>`).join("")}</div>`:empty("🗓️","今天暂无待办","点击快速新增即可创建")}</div>
-  <div class="glass"><div class="section-head"><h3>月度考勤统计</h3><span>${today().slice(0,7)}</span></div><div class="table-wrap"><table><thead><tr><th>日期</th><th>出勤</th><th>迟到</th><th>请假</th><th>缺勤</th></tr></thead><tbody>${attendanceRows.map(r=>`<tr><td>${r.date}</td><td>${r.present}</td><td>${r.late}</td><td>${r.leave}</td><td>${r.absent}</td></tr>`).join("")}</tbody></table></div></div>
+  <div class="glass"><div class="section-head"><h3>今日待办</h3><span>${todos.length} 项</span></div>${todos.length?`<div class="timeline">${todos.map(x=>`<div class="todo ${x.done?"done":""}"><div class="todo-time">${esc(x.time||"--:--")}</div><div class="bullet"></div><div class="todo-title">${esc(x.title)}</div><button class="btn tiny" onclick="toggleDone('todos','${x.id}')">${x.done?"取消完成":"标记完成"}</button></div>`).join("")}</div>`:empty("🗓️","今天暂无待办","点击快速新增即可创建")}</div>
+  <div class="glass"><div class="section-head"><h3>月度考勤统计</h3><span>${today().slice(0,7)}</span></div>${attendanceRows.length?`<div class="table-wrap"><table><thead><tr><th>日期</th><th>出勤</th><th>迟到</th><th>请假</th><th>缺勤</th><th>操作</th></tr></thead><tbody>${attendanceRows.map(r=>`<tr><td>${esc(r.date)}</td><td>${n(r.present)}</td><td>${n(r.late)}</td><td>${n(r.leave)}</td><td>${n(r.absent)}</td><td><button class="btn tiny" onclick="openAttendance('${r.date}')">编辑</button></td></tr>`).join("")}</tbody></table></div>`:empty("📋","本月尚未登记考勤","点击“登记今日考勤”开始记录")}</div>
  </div>`;
 }
 function getRecentAttendance(){
- const count=scoped(state.students).length||58;let rows=[];for(let i=3;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const ds=d.toISOString().slice(0,10);const leave=scoped(state.leaves).filter(x=>x.date===ds&&!x.cancelled).length;rows.push({date:ds.slice(5),present:count-leave,late:0,leave,absent:0})}return rows
+ return scoped(state.attendance).filter(x=>(x.date||"").slice(0,7)===today().slice(0,7)).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+}
+function openAttendance(date=today()){
+ const roster=scoped(state.students).length;
+ const leaveCount=scoped(state.leaves).filter(x=>x.date===date&&!x.cancelled).length;
+ let r=state.attendance.find(x=>x.classId===state.currentClassId&&x.date===date);
+ const base=r||{classId:state.currentClassId,date,present:Math.max(0,roster-leaveCount),late:0,leave:leaveCount,absent:0,note:""};
+ openCustomForm(r?"编辑考勤":"登记考勤",[["date","日期","date"],["present","出勤人数","number"],["late","迟到人数（计入出勤）","number"],["leave","请假人数","number"],["absent","缺勤人数","number"],["note","备注","textarea"]],base,vals=>{
+  for(const k of ["present","late","leave","absent"]){if(n(vals[k])<0)return toast("考勤人数不能为负数")}
+  if(n(vals.late)>n(vals.present))return toast("迟到人数不能大于出勤人数");
+  if(roster>0&&n(vals.present)+n(vals.leave)+n(vals.absent)>roster)return toast("出勤 + 请假 + 缺勤不能超过班级人数");
+  const same=state.attendance.find(x=>x.classId===state.currentClassId&&x.date===vals.date&&x.id!==base.id);
+  if(same)return toast("该日期已有考勤记录，请直接编辑原记录");
+  Object.assign(base,vals,{present:n(vals.present),late:n(vals.late),leave:n(vals.leave),absent:n(vals.absent)});
+  if(!r){base.id=uid();state.attendance.push(base)}
+  save("考勤记录已保存");showPage("dashboard")
+ })
 }
 function empty(icon,title,sub){return `<div class="empty"><div class="big">${icon}</div><b>${title}</b><span>${sub}</span></div>`}
 
@@ -382,22 +401,28 @@ function genericHeaders(fields){return fields.map(x=>x[1])}
 function renderGenericTable(name,arr){
  const c=configs[name];if(!arr.length)return empty("📭","暂无记录","点击右上角新增第一条记录");
  const headers=genericHeaders(c.fields);
- return `<div class="table-wrap"><table id="dataTable"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}<th>操作</th></tr></thead><tbody>${arr.slice().reverse().map(r=>`<tr>${c.fields.map(f=>`<td>${formatCell(f,r[f[0]])}</td>`).join("")}<td><button class="btn tiny" onclick="editRecord('${name}','${r.id}')">编辑</button> <button class="btn tiny danger" onclick="deleteRecord('${c.store}','${r.id}')">删除</button></td></tr>`).join("")}</tbody></table></div>`;
+ const rows=arr.slice().sort((a,b)=>{const ak=(a.date||"")+(a.time||""),bk=(b.date||"")+(b.time||"");return ak||bk?bk.localeCompare(ak):0});
+ return `<div class="table-wrap"><table id="dataTable"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}<th>操作</th></tr></thead><tbody>${rows.map(r=>`<tr>${c.fields.map(f=>`<td>${formatCell(f,r[f[0]])}</td>`).join("")}<td><button class="btn tiny" onclick="editRecord('${name}','${r.id}')">编辑</button> <button class="btn tiny danger" onclick="deleteRecord('${c.store}','${r.id}')">删除</button></td></tr>`).join("")}</tbody></table></div>`;
 }
 function formatCell(f,v){
  if(f[2]==="checkbox")return v?'<span class="pill ok">是</span>':'<span class="pill warn">否</span>';
- if(f[0]==="url"&&v)return `<a class="link" href="${esc(v)}" target="_blank" rel="noopener">打开原平台 ↗</a>`;
+ if(f[0]==="url"&&v)return `<a class="link" href="${esc(normalizeUrl(v))}" target="_blank" rel="noopener noreferrer">打开原平台 ↗</a>`;
  if(f[2]==="textarea")return esc(String(v||"").slice(0,70))+(String(v||"").length>70?"…":"");
  return esc(v??"");
 }
+function normalizeUrl(v){const s=String(v||"").trim();return /^https?:\/\//i.test(s)?s:"https://"+s}
 function renderTodoHistory(arr){
- const pending=arr.filter(x=>!x.done).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)),done=arr.filter(x=>x.done);
+ const pending=arr.filter(x=>!x.done).sort((a,b)=>((a.date||"")+(a.time||"")).localeCompare((b.date||"")+(b.time||""))),done=arr.filter(x=>x.done).sort((a,b)=>((b.date||"")+(b.time||"")).localeCompare((a.date||"")+(a.time||"")));
  const doneMap={};done.forEach(x=>(doneMap[x.date]??=[]).push(x));
  return `<div><div class="section-head"><h3>未完成</h3><span>${pending.length} 项</span></div>${pending.length?`<div class="timeline">${pending.map(x=>todoRow(x)).join("")}</div>`:empty("✅","没有未完成任务","")}
  <div class="section-head" style="margin-top:16px"><h3>已完成历史</h3><span>按日期折叠</span></div>${Object.keys(doneMap).sort().reverse().map(d=>`<div class="history-group"><button class="history-title" onclick="this.parentElement.classList.toggle('open')"><span>${d}</span><span>${doneMap[d].length} 项⌄</span></button><div class="history-body">${doneMap[d].map(x=>todoRow(x)).join("")}</div></div>`).join("")||empty("🗃️","暂无历史记录","完成任务后会自动归档")}
  </div>`;
 }
-function todoRow(x){return `<div class="todo done"><div class="todo-time">${esc(x.time||"--:--")}</div><div class="bullet"></div><div class="todo-title">${esc(x.title)} <span class="tag">${esc(x.type||"")}</span></div><div><button class="btn tiny" onclick="toggleDone('todos','${x.id}')">${x.done?"恢复":"完成"}</button> <button class="btn tiny" onclick="editRecord('todo','${x.id}')">编辑</button></div></div>`}
+function todoRow(x){
+ const overdue=!x.done&&x.date&&x.date<today();
+ const dt=`${x.date?x.date.slice(5):"--"} ${x.time||"--:--"}`;
+ return `<div class="todo ${x.done?"done":""}"><div class="todo-time">${esc(dt)}</div><div class="bullet"></div><div class="todo-title">${esc(x.title)} <span class="tag">${esc(x.type||"")}</span>${overdue?' <span class="pill bad">已逾期</span>':''}</div><div><button class="btn tiny" onclick="toggleDone('todos','${x.id}')">${x.done?"取消完成":"标记完成"}</button> <button class="btn tiny" onclick="editRecord('todo','${x.id}')">编辑</button></div></div>`
+}
 function filterRows(q){q=q.toLowerCase();document.querySelectorAll("#dataTable tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")}
 
 function renderSpecial(name){
@@ -419,13 +444,24 @@ function renderStudents(box){
 function renderStudentRows(q=""){
  const el=document.getElementById("studentRows");if(!el)return;const gender=(document.getElementById("genderFilter")||{}).value||"";let arr=scoped(state.students).filter(x=>(!gender||x.gender===gender)&&JSON.stringify(x).toLowerCase().includes(q.toLowerCase()));
  if(!arr.length){el.innerHTML=empty("👩‍🎓","暂无匹配学生","可添加或从 Excel 导入");return}
- el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>学号</th><th>姓名</th><th>性别</th><th>出生日期</th><th>家长姓名</th><th>联系电话</th><th>操作</th></tr></thead><tbody>${arr.map(s=>`<tr><td>${esc(s.no)}</td><td><span class="avatar ${s.gender==="女"?"f":"m"}">${esc((s.name||"学生").slice(-2))}</span>${esc(s.name)}</td><td>${esc(s.gender)}</td><td>${esc(s.birth)}</td><td>${esc(s.parent)}</td><td>${esc(s.phone)}</td><td><button class="btn tiny" onclick="openStudent('${s.id}')">编辑</button> <button class="btn tiny danger" onclick="deleteRecord('students','${s.id}')">删除</button></td></tr>`).join("")}</tbody></table></div>`;
+ el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>学号</th><th>姓名</th><th>性别</th><th>出生日期</th><th>家长姓名</th><th>联系电话</th><th>操作</th></tr></thead><tbody>${arr.map(s=>`<tr><td>${esc(s.no)}</td><td><span class="avatar ${s.gender==="女"?"f":"m"}">${esc((s.name||"学生").slice(-2))}</span>${esc(s.name)}</td><td>${esc(s.gender)}</td><td>${esc(s.birth)}</td><td>${esc(s.parent)}</td><td>${esc(s.phone)}</td><td><button class="btn tiny" onclick="openStudent('${s.id}')">编辑</button> <button class="btn tiny danger" onclick="deleteStudent('${s.id}')">删除</button></td></tr>`).join("")}</tbody></table></div>`;
 }
 function openStudent(id){
  const r=state.students.find(x=>x.id===id)||{classId:state.currentClassId,no:"",name:"",gender:"男",birth:"",parent:"",phone:""};
  openCustomForm(id?"编辑学生":"添加学生",[
   ["no","学号","text"],["name","姓名","text"],["gender","性别","select",["男","女"]],["birth","出生日期","date"],["parent","家长姓名","text"],["phone","联系电话","tel"]
- ],r,(vals)=>{Object.assign(r,vals);if(!id){r.id=uid();r.classId=state.currentClassId;state.students.push(r)}save("学生档案已保存");renderSpecial("students")})
+ ],r,(vals)=>{
+  vals.name=String(vals.name||"").trim();vals.no=String(vals.no||"").trim();
+  if(!vals.name)return toast("学生姓名不能为空");
+  if(vals.no&&state.students.some(s=>s.classId===state.currentClassId&&s.no===vals.no&&s.id!==r.id))return toast("该学号已存在，请检查后再保存");
+  Object.assign(r,vals);if(!id){r.id=uid();r.classId=state.currentClassId;state.students.push(r)}save("学生档案已保存");renderSpecial("students")})
+}
+function deleteStudent(id){
+ const s=state.students.find(x=>x.id===id);if(!s)return;
+ const scoreCount=state.scores.filter(x=>x.studentId===id).length,seatCount=state.seats.filter(x=>x.studentId===id).length;
+ if(!confirm(`确定删除“${s.name}”的学生档案吗？\n同时会删除其 ${scoreCount} 条成绩和 ${seatCount} 个座位关联；历史请假等文字记录会保留。`))return;
+ state.students=state.students.filter(x=>x.id!==id);state.scores=state.scores.filter(x=>x.studentId!==id);state.seats=state.seats.filter(x=>x.studentId!==id);
+ save("学生档案已删除");renderSpecial("students")
 }
 
 function renderScores(box){
@@ -441,7 +477,7 @@ function renderScores(box){
  <div class="glass section"><div class="toolbar"><select onchange="window.__examId=this.value;renderSpecial('scores')">${exams.map(e=>`<option value="${e.id}" ${e.id===examId?"selected":""}>${esc(e.name)} · ${esc(e.date)}</option>`).join("")||"<option>暂无考试</option>"}</select>${exam?`<button class="btn tiny danger" onclick="deleteExam('${exam.id}')">删除当前考试</button>`:""}</div>${exam?renderScoreTable(rows):empty("📊","还没有考试","先新建考试，再录入成绩")}</div>
  <div class="charts section">
   <div class="glass chart-card"><div class="chart-title">当前考试各科平均分 · 柱状图</div><div class="chart-box"><canvas id="avgChart"></canvas></div></div>
-  <div class="glass chart-card"><div class="chart-title">当前考试总分分布 · 饼图</div><div class="chart-box"><canvas id="pieChart"></canvas></div></div>
+  <div class="glass chart-card"><div class="chart-title">当前考试排名分层 · 饼图</div><div class="chart-box"><canvas id="pieChart"></canvas></div></div>
   <div class="glass chart-card"><div class="chart-title">班级历次考试平均总分趋势</div><div class="chart-box"><canvas id="trendChart"></canvas></div></div>
   <div class="glass chart-card"><div class="chart-title">学生个人历次总分趋势</div><div class="toolbar" style="margin-bottom:6px"><select id="trendStudent" onchange="window.__trendStudentId=this.value;drawStudentTrendChart(scoped(state.exams),this.value)">${students.map(s=>`<option value="${s.id}" ${s.id===(window.__trendStudentId||students[0]?.id)?"selected":""}>${esc(s.name)}</option>`).join("")||"<option>暂无学生</option>"}</select></div><div class="chart-box"><canvas id="studentTrendChart"></canvas></div></div>
  </div>`;
@@ -457,22 +493,25 @@ function renderScoreTable(rows){
 }
 function deleteScore(id){if(!confirm("确定删除这条成绩吗？"))return;state.scores=state.scores.filter(x=>x.id!==id);save("成绩已删除");renderSpecial("scores")}
 function openExam(){
- openCustomForm("新建考试",[["name","考试名称","text"],["date","考试日期","date"]],{name:"月考",date:today()},vals=>{state.exams.push({id:uid(),classId:state.currentClassId,...vals});save("考试已创建");renderSpecial("scores")})
+ openCustomForm("新建考试",[["name","考试名称","text"],["date","考试日期","date"]],{name:"月考",date:today()},vals=>{vals.name=String(vals.name||"").trim();if(!vals.name||!vals.date)return toast("请填写考试名称和日期");if(state.exams.some(e=>e.classId===state.currentClassId&&e.name===vals.name&&e.date===vals.date))return toast("同名同日考试已存在");state.exams.push({id:uid(),classId:state.currentClassId,...vals});save("考试已创建");renderSpecial("scores")})
 }
 function deleteExam(id){if(!confirm("删除考试会同时删除该考试成绩，确定吗？"))return;state.exams=state.exams.filter(x=>x.id!==id);state.scores=state.scores.filter(x=>x.examId!==id);window.__examId="";save("考试已删除");renderSpecial("scores")}
 function openScore(id){
  const exams=scoped(state.exams),students=scoped(state.students);if(!exams.length)return toast("请先新建考试");if(!students.length)return toast("请先添加或导入学生");
  const r=state.scores.find(x=>x.id===id)||{examId:window.__examId||exams[0].id,studentId:students[0].id,chinese:"",math:"",english:"",history:"",politics:"",geography:""};
  const fields=[["examId","考试","select",exams.map(e=>[e.id,e.name])],["studentId","学生","select",students.map(s=>[s.id,s.name])],["chinese","语文","number"],["math","数学","number"],["english","英语","number"],["history","历史","number"],["politics","政治","number"],["geography","地理","number"]];
- openCustomForm(id?"编辑成绩":"录入成绩",fields,r,vals=>{Object.assign(r,vals);if(!id){r.id=uid();state.scores.push(r)}window.__examId=r.examId;save("成绩已保存");renderSpecial("scores")})
+ openCustomForm(id?"编辑成绩":"录入成绩",fields,r,vals=>{
+  for(const k of ["chinese","math","english","history","politics","geography"]){if(vals[k]!==""&&n(vals[k])<0)return toast("成绩不能为负数")}
+  if(!id){const exist=state.scores.find(x=>x.examId===vals.examId&&x.studentId===vals.studentId);if(exist){if(!confirm("该学生在本次考试中已有成绩，是否用本次录入覆盖原成绩？"))return;Object.assign(exist,vals);window.__examId=exist.examId;save("成绩已更新");renderSpecial("scores");return}}
+  Object.assign(r,vals);if(!id){r.id=uid();state.scores.push(r)}window.__examId=r.examId;save("成绩已保存");renderSpecial("scores")})
 }
 function drawAvgChart(rows){const c=document.getElementById("avgChart");if(!c)return;const keys=["chinese","math","english","history","politics","geography"],labels=["语文","数学","英语","历史","政治","地理"],vals=keys.map(k=>rows.length?rows.reduce((s,r)=>s+n(r[k]),0)/rows.length:0);drawBars(c,labels,vals)}
-function drawTrendChart(exams){const c=document.getElementById("trendChart");if(!c)return;const vals=exams.map(e=>{const r=scoreRows(e.id);return r.length?r.reduce((s,x)=>s+x.total,0)/r.length:0});drawLine(c,exams.map(e=>e.name),vals)}
-function drawStudentTrendChart(exams,studentId){const c=document.getElementById("studentTrendChart");if(!c)return;const vals=exams.map(e=>{const s=state.scores.find(x=>x.examId===e.id&&x.studentId===studentId);return s?["chinese","math","english","history","politics","geography"].reduce((a,k)=>a+n(s[k]),0):0});drawLine(c,exams.map(e=>e.name),vals)}
-function drawScorePie(rows){const c=document.getElementById("pieChart");if(!c)return;const [x,w,h]=prepCanvas(c);if(!rows.length){x.fillStyle="#79929a";x.font="12px sans-serif";x.fillText("暂无数据",w/2-20,h/2);return}const groups=[0,0,0,0];rows.forEach(r=>{const v=r.total;if(v>=540)groups[0]++;else if(v>=480)groups[1]++;else if(v>=420)groups[2]++;else groups[3]++});const labels=["≥540","480-539","420-479","<420"],cols=["#45b9d5","#79d7e8","#efd18a","#f4b4c7"],sum=groups.reduce((a,b)=>a+b,0);let a=-Math.PI/2;groups.forEach((g,i)=>{const da=sum?Math.PI*2*g/sum:0;x.beginPath();x.moveTo(w*.38,h*.5);x.arc(w*.38,h*.5,Math.min(w,h)*.30,a,a+da);x.closePath();x.fillStyle=cols[i];x.fill();a+=da});labels.forEach((lab,i)=>{x.fillStyle=cols[i];x.fillRect(w*.70,50+i*32,11,11);x.fillStyle="#6f8d96";x.font="11px sans-serif";x.fillText(`${lab}：${groups[i]}人`,w*.70+17,60+i*32)})}
+function drawTrendChart(exams){const c=document.getElementById("trendChart");if(!c)return;const vals=exams.map(e=>{const r=scoreRows(e.id);return r.length?r.reduce((s,x)=>s+x.total,0)/r.length:null});drawLine(c,exams.map(e=>e.name),vals)}
+function drawStudentTrendChart(exams,studentId){const c=document.getElementById("studentTrendChart");if(!c)return;const vals=exams.map(e=>{const s=state.scores.find(x=>x.examId===e.id&&x.studentId===studentId);return s?["chinese","math","english","history","politics","geography"].reduce((a,k)=>a+n(s[k]),0):null});drawLine(c,exams.map(e=>e.name),vals)}
+function drawScorePie(rows){const c=document.getElementById("pieChart");if(!c)return;const [x,w,h]=prepCanvas(c);if(!rows.length){x.fillStyle="#79929a";x.font="12px sans-serif";x.fillText("暂无数据",w/2-20,h/2);return}const groups=[0,0,0,0],sorted=rows.slice().sort((a,b)=>b.total-a.total);sorted.forEach((r,i)=>{const q=i/sorted.length;if(q<.25)groups[0]++;else if(q<.5)groups[1]++;else if(q<.75)groups[2]++;else groups[3]++});const labels=["前25%","25%-50%","50%-75%","后25%"],cols=["#45b9d5","#79d7e8","#efd18a","#f4b4c7"],sum=groups.reduce((a,b)=>a+b,0);let a=-Math.PI/2;groups.forEach((g,i)=>{const da=Math.PI*2*g/sum;x.beginPath();x.moveTo(w*.38,h*.5);x.arc(w*.38,h*.5,Math.min(w,h)*.30,a,a+da);x.closePath();x.fillStyle=cols[i];x.fill();a+=da});labels.forEach((lab,i)=>{x.fillStyle=cols[i];x.fillRect(w*.70,50+i*32,11,11);x.fillStyle="#6f8d96";x.font="11px sans-serif";x.fillText(`${lab} ${groups[i]}人`,w*.70+18,60+i*32)})}
 function prepCanvas(c){const dpr=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*dpr;c.height=h*dpr;const x=c.getContext("2d");x.scale(dpr,dpr);x.clearRect(0,0,w,h);return [x,w,h]}
 function drawBars(c,labels,vals){const [x,w,h]=prepCanvas(c),max=Math.max(100,...vals),pad=30,bw=(w-pad*2)/labels.length*.58,gap=(w-pad*2)/labels.length;x.strokeStyle="rgba(60,130,150,.15)";x.beginPath();x.moveTo(pad,h-28);x.lineTo(w-pad,h-28);x.stroke();vals.forEach((v,i)=>{const bh=(h-60)*(v/max),xx=pad+i*gap+(gap-bw)/2,yy=h-28-bh;const g=x.createLinearGradient(0,yy,0,h);g.addColorStop(0,getComputedStyle(document.documentElement).getPropertyValue("--primary"));g.addColorStop(1,getComputedStyle(document.documentElement).getPropertyValue("--primary2"));x.fillStyle=g;x.beginPath();if(x.roundRect)x.roundRect(xx,yy,bw,bh,8);else x.rect(xx,yy,bw,bh);x.fill();x.fillStyle="#6f8d96";x.font="11px sans-serif";x.textAlign="center";x.fillText(labels[i],xx+bw/2,h-10);x.fillText(v.toFixed(1),xx+bw/2,Math.max(12,yy-5))})}
-function drawLine(c,labels,vals){const [x,w,h]=prepCanvas(c),pad=34;if(!vals.length){x.fillStyle="#79929a";x.font="12px sans-serif";x.fillText("暂无数据",w/2-20,h/2);return}const max=Math.max(1,...vals),min=Math.min(0,...vals),step=(w-pad*2)/Math.max(1,vals.length-1);x.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue("--primary");x.lineWidth=3;x.beginPath();vals.forEach((v,i)=>{const px=pad+i*step,py=h-35-(h-70)*(v-min)/(max-min||1);i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke();vals.forEach((v,i)=>{const px=pad+i*step,py=h-35-(h-70)*(v-min)/(max-min||1);x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue("--deep");x.beginPath();x.arc(px,py,4,0,Math.PI*2);x.fill();x.fillStyle="#718d97";x.font="10px sans-serif";x.textAlign="center";x.fillText(labels[i]||"",px,h-12);x.fillText(v.toFixed(1),px,py-8)})}
+function drawLine(c,labels,vals){const [x,w,h]=prepCanvas(c),pad=34;const valid=vals.map((v,i)=>({v,i})).filter(o=>Number.isFinite(o.v));if(!valid.length){x.fillStyle="#79929a";x.font="12px sans-serif";x.textAlign="center";x.fillText("暂无有效数据",w/2,h/2);return}const max=Math.max(1,...valid.map(o=>o.v)),min=Math.min(0,...valid.map(o=>o.v)),step=(w-pad*2)/Math.max(1,vals.length-1);x.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue("--primary");x.lineWidth=3;x.beginPath();valid.forEach((o,j)=>{const px=pad+o.i*step,py=h-35-(h-70)*(o.v-min)/(max-min||1);j?x.lineTo(px,py):x.moveTo(px,py)});x.stroke();valid.forEach(o=>{const px=pad+o.i*step,py=h-35-(h-70)*(o.v-min)/(max-min||1);x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue("--deep");x.beginPath();x.arc(px,py,4,0,Math.PI*2);x.fill();x.fillStyle="#718d97";x.font="10px sans-serif";x.textAlign="center";x.fillText(labels[o.i]||"",px,h-12);x.fillText(o.v.toFixed(1),px,py-8)})}
 
 function renderSchedule(box,my){
  const days=["周一","周二","周三","周四","周五"],periods=[1,2,3,4,5,6,7,8];
@@ -496,15 +535,17 @@ function renderLeave(box){
  box.innerHTML=pageHeader("请假管理","四步登记流程：选择学生 → 请假信息 → 确认登记 → 销假跟踪。",`<button class="btn primary" onclick="openLeave()">＋ 登记请假</button>`) +
  `<div class="steps"><div class="step active">1 选择学生</div><div class="step active">2 请假信息</div><div class="step active">3 确认登记</div><div class="step">4 销假跟踪</div></div>
  <div class="grid-3"><div class="card stat"><div class="label">累计请假</div><div class="value">${arr.length}</div></div><div class="card stat"><div class="label">未销假</div><div class="value">${active.length}</div></div><div class="card stat"><div class="label">已销假</div><div class="value">${done.length}</div></div></div>
- <div class="glass section">${arr.length?`<div class="table-wrap"><table><thead><tr><th>日期</th><th>学生</th><th>类型</th><th>事由</th><th>时长</th><th>销假</th><th>操作</th></tr></thead><tbody>${arr.slice().reverse().map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.student)}</td><td>${esc(r.type)}</td><td>${esc(r.reason)}</td><td>${esc(r.duration)}</td><td>${r.cancelled?'<span class="pill ok">已销假</span>':'<span class="pill warn">未销假</span>'}</td><td><button class="btn tiny" onclick="toggleLeave('${r.id}')">${r.cancelled?"恢复":"销假"}</button> <button class="btn tiny" onclick="exportLeave('${r.id}')">请假条</button> <button class="btn tiny" onclick="openLeave('${r.id}')">编辑</button> <button class="btn tiny danger" onclick="deleteLeave('${r.id}')">删除</button></td></tr>`).join("")}</tbody></table></div>`:empty("🧷","暂无请假记录","点击登记请假开始")}</div>`;
+ <div class="glass section">${arr.length?`<div class="table-wrap"><table><thead><tr><th>日期</th><th>学生</th><th>类型</th><th>事由</th><th>时长</th><th>销假</th><th>操作</th></tr></thead><tbody>${arr.slice().reverse().map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.student)}</td><td>${esc(r.type)}</td><td>${esc(r.reason)}</td><td>${esc(r.duration)}</td><td>${r.cancelled?'<span class="pill ok">已销假</span>':'<span class="pill warn">未销假</span>'}</td><td><button class="btn tiny" onclick="toggleLeave('${r.id}')">${r.cancelled?"取消销假":"销假"}</button> <button class="btn tiny" onclick="exportLeave('${r.id}')">请假条</button> <button class="btn tiny" onclick="openLeave('${r.id}')">编辑</button> <button class="btn tiny danger" onclick="deleteLeave('${r.id}')">删除</button></td></tr>`).join("")}</tbody></table></div>`:empty("🧷","暂无请假记录","点击登记请假开始")}</div>`;
 }
 function openLeave(id){
- const students=scoped(state.students);const r=state.leaves.find(x=>x.id===id)||{classId:state.currentClassId,date:today(),student:students[0]?.name||"",type:"校内病假",reason:"",duration:"1天",note:"",cancelled:false};
- openCustomForm(id?"编辑请假":"登记请假",[["date","日期","date"],["student","学生姓名","select",students.length?students.map(s=>s.name):["请先录入学生"]],["type","请假类型","select",["校内病假","校内事假","校外病假","校外事假"]],["reason","事由","textarea"],["duration","请假时长","text"],["note","备注","textarea"],["cancelled","是否销假","checkbox"]],r,vals=>{Object.assign(r,vals);if(!id){r.id=uid();r.classId=state.currentClassId;state.leaves.push(r)}save("请假记录已保存");renderSpecial("leave")})
+ const students=scoped(state.students);if(!id&&!students.length)return toast("请先在学生档案中录入学生");
+ const existing=state.leaves.find(x=>x.id===id),r=existing||{classId:state.currentClassId,date:today(),student:students[0]?.name||"",type:"校内病假",reason:"",duration:"1天",note:"",cancelled:false};
+ const names=students.map(s=>s.name);if(r.student&&!names.includes(r.student))names.unshift(r.student);
+ openCustomForm(id?"编辑请假":"登记请假",[["date","日期","date"],["student","学生姓名","select",names],["type","请假类型","select",["校内病假","校内事假","校外病假","校外事假"]],["reason","事由","textarea"],["duration","请假时长","text"],["note","备注","textarea"],["cancelled","是否销假","checkbox"]],r,vals=>{if(!vals.student||!vals.date||!vals.type)return toast("请完整填写日期、学生和请假类型");Object.assign(r,vals);if(!id){r.id=uid();r.classId=state.currentClassId;state.leaves.push(r)}save("请假记录已保存");renderSpecial("leave")})
 }
 function deleteLeave(id){if(!confirm("确定删除这条请假记录吗？"))return;state.leaves=state.leaves.filter(x=>x.id!==id);save("请假记录已删除");renderSpecial("leave")}
 function toggleLeave(id){const r=state.leaves.find(x=>x.id===id);if(r){r.cancelled=!r.cancelled;save("销假状态已更新");renderSpecial("leave")}}
-function exportLeave(id){const r=state.leaves.find(x=>x.id===id);if(!r)return;const text=`请 假 条\n\n班级：${curClass().name}\n学生：${r.student}\n日期：${r.date}\n类型：${r.type}\n事由：${r.reason}\n请假时长：${r.duration}\n备注：${r.note||""}\n\n班主任签字：____________\n`;const blob=new Blob([text],{type:"text/plain;charset=utf-8"});downloadBlob(blob,`请假条_${r.student}_${r.date}.txt`)}
+function exportLeave(id){const r=state.leaves.find(x=>x.id===id);if(!r)return;const w=window.open("","_blank");if(!w)return toast("浏览器阻止了弹窗，请允许弹窗后重试");w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>请假条_${esc(r.student)}</title><style>body{font-family:"Microsoft YaHei",sans-serif;padding:45px;color:#222}.paper{max-width:680px;margin:auto}.title{text-align:center;font-size:28px;font-weight:700;margin-bottom:32px}.row{font-size:16px;line-height:2;border-bottom:1px solid #ddd}.sign{margin-top:50px;text-align:right}.print{margin-top:30px;text-align:center}.print button{padding:10px 18px}@media print{.print{display:none}}</style></head><body><div class="paper"><div class="title">请 假 条</div><div class="row">班级：${esc(curClass().name)}</div><div class="row">学生：${esc(r.student)}</div><div class="row">日期：${esc(r.date)}</div><div class="row">类型：${esc(r.type)}</div><div class="row">请假时长：${esc(r.duration)}</div><div class="row">事由：${esc(r.reason)}</div><div class="row">备注：${esc(r.note||"")}</div><div class="sign">班主任签字：____________</div><div class="print"><button onclick="window.print()">打印 / 另存为 PDF</button></div></div></body></html>`);w.document.close()}
 
 function renderSeats(box){
  const students=scoped(state.students),seatMap={};scoped(state.seats).forEach(x=>seatMap[x.position]=x.studentId);
@@ -518,10 +559,15 @@ function assignSeat(pos){
 }
 function clearSeats(){if(confirm("确定清空当前班级座位表吗？")){state.seats=state.seats.filter(x=>x.classId!==state.currentClassId);save("座位表已清空");renderSpecial("seats")}}
 
-function openRecord(name,id){const c=configs[name];if(!c)return;const store=state[c.store],r=store.find(x=>x.id===id)||{classId:state.currentClassId,date:today()};openCustomForm(id?"编辑"+c.title:"新增"+c.title,c.fields,r,vals=>{Object.assign(r,vals);if(!id){r.id=uid();r.classId=state.currentClassId;store.push(r)}save(c.title+"已保存");name==="todo"?showPage("todo"):renderGeneric(name)})}
+function openRecord(name,id){const c=configs[name];if(!c)return;const store=state[c.store],r=store.find(x=>x.id===id)||{classId:state.currentClassId,date:today()};if(name==="homework"&&!id){r.assigned=scoped(state.students).length;r.completed=0}openCustomForm(id?"编辑"+c.title:"新增"+c.title,c.fields,r,vals=>{
+ const required={todo:["date","title"],notes:["date","title"],reminders:["date","title"],growth:["date","type","title"],trace:["date","type","title"],prep:["topic"],homework:["date","content"],parents:["student","name"],visits:["date","student"],meetings:["date","title"],notices:["date","title"],classMeeting:["date","title"],duty:["date","students"],dorm:["dorm","student"],committee:["role","student"],activities:["date","title"]};
+ if((required[name]||[]).some(k=>!String(vals[k]??"").trim()))return toast("请填写必要信息后再保存");
+ if(name==="homework"){if(n(vals.assigned)<0||n(vals.completed)<0)return toast("作业人数不能为负数");if(n(vals.completed)>n(vals.assigned))return toast("已完成人数不能大于应交人数")}
+ if(name==="growth"&&n(vals.hours)<0)return toast("学习时长不能为负数");
+ Object.assign(r,vals);if(!id){r.id=uid();r.classId=state.currentClassId;store.push(r)}save(c.title+"已保存");name==="todo"?showPage("todo"):renderGeneric(name)})}
 function editRecord(name,id){openRecord(name,id)}
 function deleteRecord(store,id){if(!confirm("确定删除这条记录吗？"))return;state[store]=state[store].filter(x=>x.id!==id);save("记录已删除");showPage(currentPage)}
-function toggleDone(store,id){const r=state[store].find(x=>x.id===id);if(r){r.done=!r.done;save(r.done?"任务已打卡":"已恢复为未完成");showPage(currentPage)}}
+function toggleDone(store,id){const r=state[store].find(x=>x.id===id);if(r){r.done=!r.done;save(r.done?"任务已标记完成":"已取消完成");showPage(currentPage)}}
 
 function fieldHtml(f,val){
  const [key,label,type,opt]=f,v=val??"";
@@ -547,7 +593,7 @@ async function handleFile(file){
  try{
   if(file.name.toLowerCase().endsWith(".json")){const txt=await file.text(),data=JSON.parse(txt);if(!data.version)throw new Error("不是教师工作台备份文件");state=normalizeState(data);state._syncMeta.lastLocalChange=new Date().toISOString();save("备份已恢复");renderClassSelect();setTheme(state.theme);showPage("dashboard");out.textContent="✅ JSON 备份已恢复。";return}
   if(/\.(xlsx|xls)$/i.test(file.name)){if(typeof XLSX==="undefined")throw new Error("Excel 解析库未加载，请联网后重试");const buf=await file.arrayBuffer(),wb=XLSX.read(buf,{type:"array"});let total=0,details=[];for(const sn of wb.SheetNames){const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:""});const r=autoClassifyRows(rows,sn);total+=r.count;details.push(`${sn}：${r.type} ${r.count} 条`)}save("Excel 导入完成");out.innerHTML=`✅ 已自动归档 ${total} 条记录。<br>${details.map(esc).join("<br>")}`;showPage(currentPage);return}
-  if(/\.docx$/i.test(file.name)){if(typeof mammoth==="undefined")throw new Error("Word 解析库未加载，请联网后重试");const buf=await file.arrayBuffer(),res=await mammoth.extractRawText({arrayBuffer:buf});const lines=res.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);state.notes.push({id:uid(),classId:state.currentClassId,date:today(),title:`Word导入：${file.name}`,tag:"自动归档",content:lines.join("\n")});save("Word 已归档到笔记");out.textContent=`✅ Word 内容已提取并归档到“待办备忘 → 笔记”，共 ${lines.length} 行。`;return}
+  if(/\.docx$/i.test(file.name)){if(typeof mammoth==="undefined")throw new Error("Word 解析库未加载，请联网后重试");const buf=await file.arrayBuffer();const htmlRes=await mammoth.convertToHtml({arrayBuffer:buf}),doc=new DOMParser().parseFromString(htmlRes.value,"text/html");let total=0,details=[];doc.querySelectorAll("table").forEach((table,idx)=>{const trs=[...table.querySelectorAll("tr")];if(trs.length<2)return;const headers=[...trs[0].querySelectorAll("th,td")].map(x=>x.textContent.trim());const rows=trs.slice(1).map(tr=>{const cells=[...tr.querySelectorAll("th,td")].map(x=>x.textContent.trim()),o={};headers.forEach((k,i)=>o[k||`列${i+1}`]=cells[i]||"");return o}).filter(r=>Object.values(r).some(Boolean));if(rows.length){const r=autoClassifyRows(rows,`Word表格${idx+1}`);total+=r.count;details.push(`表格${idx+1}：${r.type} ${r.count} 条`)}});const text=(doc.body.innerText||doc.body.textContent||"").trim();if(text){state.notes.push({id:uid(),classId:state.currentClassId,date:today(),title:`Word导入原文：${file.name}`,tag:total?"导入原文":"自动归档",content:text})}save("Word 导入完成");out.innerHTML=total?`✅ 已识别并归档 ${total} 条表格记录；原文同时保存到笔记。<br>${details.map(esc).join("<br>")}`:`✅ Word 未识别出可分类表格，原文已归档到“待办备忘 → 笔记”。`;showPage(currentPage);return}
   if(/\.(png|jpg|jpeg|webp)$/i.test(file.name)){if(typeof Tesseract==="undefined")throw new Error("图片 OCR 库未加载，请联网后重试");out.textContent="正在 OCR 识别课程表图片，首次加载识别引擎可能稍慢…";const res=await Tesseract.recognize(file,"chi_sim+eng");const text=res.data.text||"";const count=parseScheduleOCR(text);state.notes.push({id:uid(),classId:state.currentClassId,date:today(),title:`课程表图片OCR：${file.name}`,tag:"OCR原文",content:text});save("课程表图片识别完成");out.textContent=count?`✅ OCR 完成，自动识别并加入 ${count} 节课程；原始识别文字已同时保存在笔记中。`:`⚠️ OCR 已完成，但未可靠识别出“星期+节次+科目”的课程行。原文已保存到笔记，可据此手工补充课程。`;return}
   throw new Error("暂不支持该文件类型");
  }catch(e){out.textContent="❌ "+e.message}
@@ -556,7 +602,7 @@ function val(row,keys){for(const k of keys){const hit=Object.keys(row).find(h=>h
 function parseScheduleOCR(text){let count=0;const dayMap={"星期一":"周一","星期二":"周二","星期三":"周三","星期四":"周四","星期五":"周五","周一":"周一","周二":"周二","周三":"周三","周四":"周四","周五":"周五"};text.split(/\r?\n/).map(x=>x.replace(/\s+/g," ").trim()).filter(Boolean).forEach(line=>{const dm=line.match(/(星期[一二三四五]|周[一二三四五])/);const pm=line.match(/(?:第\s*)?([1-8])\s*(?:节)?/);if(!dm||!pm)return;const day=dayMap[dm[1]],period=Number(pm[1]);const subjects=["语文","数学","英语","历史","政治","地理","物理","化学","生物","体育","音乐","美术","信息","班会","自习"];const subject=subjects.find(k=>line.includes(k));if(subject){state.schedules.push({id:uid(),classId:state.currentClassId,day,period,subject,teacher:"",room:""});count++}});return count}
 function autoClassifyRows(rows,sheetName){
  if(!rows.length)return{type:"空表",count:0};const H=Object.keys(rows[0]).join("|");
- if(/学号/.test(H)&&/姓名/.test(H)){rows.forEach(r=>state.students.push({id:uid(),classId:state.currentClassId,no:val(r,["学号"]),name:val(r,["姓名"]),gender:val(r,["性别"])||"男",birth:val(r,["出生日期","生日"]),parent:val(r,["家长姓名","家长"]),phone:val(r,["联系电话","电话","手机号"])}));return{type:"学生档案",count:rows.length}}
+ if(/学号/.test(H)&&/姓名/.test(H)){let count=0;rows.forEach(r=>{const no=String(val(r,["学号"])||"").trim(),name=String(val(r,["姓名"])||"").trim();if(!name)return;let s=no?state.students.find(x=>x.classId===state.currentClassId&&String(x.no)===no):null;if(s)Object.assign(s,{name,gender:val(r,["性别"])||s.gender||"男",birth:val(r,["出生日期","生日"])||s.birth,parent:val(r,["家长姓名","家长"])||s.parent,phone:val(r,["联系电话","电话","手机号"])||s.phone});else state.students.push({id:uid(),classId:state.currentClassId,no,name,gender:val(r,["性别"])||"男",birth:val(r,["出生日期","生日"]),parent:val(r,["家长姓名","家长"]),phone:val(r,["联系电话","电话","手机号"])});count++});return{type:"学生档案",count}}
  if(/姓名/.test(H)&&/(语文|数学|英语)/.test(H)){const examName=val(rows[0],["考试名称"])||sheetName||"导入考试",exam={id:uid(),classId:state.currentClassId,name:examName,date:val(rows[0],["考试日期","日期"])||today()};state.exams.push(exam);let count=0;rows.forEach(r=>{const name=val(r,["姓名","学生姓名"]);let stu=scoped(state.students).find(s=>s.name===name);if(!stu&&name){stu={id:uid(),classId:state.currentClassId,no:val(r,["学号"]),name,gender:"男",birth:"",parent:"",phone:""};state.students.push(stu)}if(stu){state.scores.push({id:uid(),examId:exam.id,studentId:stu.id,chinese:n(val(r,["语文"])),math:n(val(r,["数学"])),english:n(val(r,["英语"])),history:n(val(r,["历史"])),politics:n(val(r,["政治"])),geography:n(val(r,["地理"]))});count++}});return{type:"成绩台账",count}}
  if(/作业内容/.test(H)){rows.forEach(r=>state.homework.push({id:uid(),classId:state.currentClassId,date:val(r,["日期"])||today(),type:val(r,["类型"])||"家庭作业",content:val(r,["作业内容"]),assigned:n(val(r,["应交人数","应交"])),completed:n(val(r,["已完成人数","完成","已交"])),note:val(r,["备注"])}));return{type:"作业管理",count:rows.length}}
  if(/请假/.test(H)){rows.forEach(r=>state.leaves.push({id:uid(),classId:state.currentClassId,date:val(r,["日期"])||today(),student:val(r,["学生","姓名","学生姓名"]),type:val(r,["请假类型"])||"校内病假",reason:val(r,["事由","原因"]),duration:val(r,["请假时长","时长"]),note:val(r,["备注"]),cancelled:String(val(r,["是否销假","销假"])).includes("是")}));return{type:"请假管理",count:rows.length}}
@@ -574,7 +620,7 @@ function updateCloudBadge(status){
  else if(status==="syncing"){el.classList.add("syncing");text="云端同步中"}
  else if(status==="failed"){el.classList.add("failed");text="同步失败"}
  else{el.classList.add("connected");text=status==="synced"?"云端已同步":"云端已连接"}
- el.querySelector("span").textContent=text
+ el.querySelector("span").textContent=text;const last=state?._syncMeta?.lastSyncedAt;el.title=last?`上次同步：${new Date(last).toLocaleString("zh-CN")}；点击立即同步`:"点击立即同步"
 }
 function setLoginMsg(msg,kind=""){
  const el=document.getElementById("loginMsg");el.textContent=msg||"";el.className="auth-msg"+(kind?" "+kind:"")
@@ -711,8 +757,8 @@ document.getElementById("classBtn").onclick=()=>{document.getElementById("rename
 document.getElementById("closeClass").onclick=()=>document.getElementById("classModal").classList.remove("show");
 document.getElementById("renameClassSave").onclick=()=>{const v=document.getElementById("renameClass").value.trim();if(!v)return toast("请输入班级名称");curClass().name=v;renderClassSelect();save("班级已重命名");showPage(currentPage)};
 document.getElementById("addClass").onclick=()=>{const v=document.getElementById("newClass").value.trim();if(!v)return toast("请输入班级名称");const c={id:uid(),name:v};state.classes.push(c);state.currentClassId=c.id;document.getElementById("newClass").value="";renderClassSelect();save("班级已添加");showPage(currentPage)};
-document.getElementById("cloneClass").onclick=()=>{const source=state.currentClassId;const name=prompt("复制后的班级名称：",curClass().name+"-副本");if(!name)return;const nc={id:uid(),name:name.trim()};state.classes.push(nc);const stores=["todos","notes","reminders","growth","traces","prep","schedules","students","homework","leaves","parents","visits","meetings","notices","seats","classMeetings","duties","dorms","committee","activities"];const idMap={};stores.forEach(k=>{const add=[];state[k].filter(x=>x.classId===source).forEach(x=>{const y=structuredClone(x);const old=y.id;y.id=uid();y.classId=nc.id;idMap[old]=y.id;add.push(y)});state[k].push(...add)});state.currentClassId=nc.id;renderClassSelect();save("班级数据已复制");document.getElementById("classModal").classList.remove("show");showPage(currentPage)};
-document.getElementById("deleteClass").onclick=()=>{if(state.classes.length<=1)return toast("至少保留一个班级");if(!confirm("删除班级只删除班级入口，不会自动删除历史数据。确定吗？"))return;state.classes=state.classes.filter(c=>c.id!==state.currentClassId);state.currentClassId=state.classes[0].id;renderClassSelect();save("班级已删除");document.getElementById("classModal").classList.remove("show");showPage(currentPage)};
+document.getElementById("cloneClass").onclick=()=>{const source=state.currentClassId;const name=prompt("新班级名称：",curClass().name+"-副本");if(!name)return;const nc={id:uid(),name:name.trim()};state.classes.push(nc);state.schedules.filter(x=>x.classId===source).forEach(x=>{const y=structuredClone(x);y.id=uid();y.classId=nc.id;state.schedules.push(y)});state.currentClassId=nc.id;renderClassSelect();save("班级框架已复制（仅复制课程表，不复制学生和历史记录）");document.getElementById("classModal").classList.remove("show");showPage(currentPage)};
+document.getElementById("deleteClass").onclick=()=>{if(state.classes.length<=1)return toast("至少保留一个班级");const cid=state.currentClassId,cname=curClass().name;const stores=["todos","notes","reminders","growth","traces","prep","schedules","students","homework","leaves","attendance","parents","visits","meetings","notices","seats","classMeetings","duties","dorms","committee","activities"];const count=stores.reduce((s,k)=>s+state[k].filter(x=>x.classId===cid).length,0)+state.exams.filter(x=>x.classId===cid).length;if(!confirm(`将删除“${cname}”及其 ${count} 条关联记录。此操作不可撤销，建议先导出备份。是否继续？`))return;const typed=prompt(`为避免误删，请输入班级名称：${cname}`);if(typed!==cname)return toast("班级名称不一致，已取消删除");const examIds=state.exams.filter(x=>x.classId===cid).map(x=>x.id);stores.forEach(k=>state[k]=state[k].filter(x=>x.classId!==cid));state.exams=state.exams.filter(x=>x.classId!==cid);state.scores=state.scores.filter(x=>!examIds.includes(x.examId));state.classes=state.classes.filter(c=>c.id!==cid);state.currentClassId=state.classes[0].id;renderClassSelect();save("班级及关联数据已删除");document.getElementById("classModal").classList.remove("show");showPage(currentPage)};
 document.getElementById("themeBtn").onclick=()=>document.getElementById("themeModal").classList.add("show");
 document.getElementById("closeTheme").onclick=()=>document.getElementById("themeModal").classList.remove("show");
 document.querySelectorAll("[data-theme]").forEach(b=>b.onclick=()=>{setTheme(b.dataset.theme);save("主题已切换");showPage(currentPage)});
@@ -727,6 +773,9 @@ document.getElementById("loginPassword").addEventListener("keydown",e=>{if(e.key
 document.getElementById("logoutBtn").onclick=signOut;
 window.addEventListener("online",()=>{updateCloudBadge("syncing");syncNow(false)});
 window.addEventListener("offline",()=>updateCloudBadge("offline"));
+window.addEventListener("focus",()=>{if(currentUser&&navigator.onLine)syncNow(false)});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&currentUser&&navigator.onLine)syncNow(false)});
+setInterval(()=>{if(currentUser&&navigator.onLine&&!document.hidden)syncNow(false)},30000);
 
 setTheme(state.theme);updateCloudBadge();bootstrapAuth();
 </script>
