@@ -7,10 +7,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="教师工作台">
-<title>教师工作台 · 完整版</title>
+<title>教师工作台 · 云同步安全版</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --primary:#45b9d5; --primary2:#79d7e8; --deep:#2187a6;
@@ -84,6 +85,33 @@ button,input,select,textarea{font:inherit;color:inherit} button{cursor:pointer}
 .link{color:var(--deep);font-weight:800;text-decoration:none}.link:hover{text-decoration:underline}
 .theme-dots{display:flex;gap:10px}.theme-dot{width:28px;height:28px;border-radius:50%;border:3px solid white;box-shadow:0 0 0 1px var(--line)}
 .t-blue{background:#61cce5}.t-pink{background:#efaac0}.t-green{background:#87d4b8}.t-purple{background:#a79be9}
+
+.auth-gate{
+  position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:18px;
+  background:
+    radial-gradient(circle at 16% 10%,rgba(255,255,255,.98),transparent 30%),
+    radial-gradient(circle at 84% 12%,rgba(113,211,232,.34),transparent 33%),
+    linear-gradient(145deg,var(--bg1),var(--bg2) 58%,#fff);
+}
+.auth-gate.hidden{display:none}
+.auth-card{
+  width:min(430px,100%);padding:28px;background:rgba(255,255,255,.78);
+  border:1px solid rgba(255,255,255,.9);border-radius:30px;box-shadow:0 26px 80px rgba(54,122,143,.18);
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)
+}
+.auth-mark{width:58px;height:58px;border-radius:20px;margin:0 auto 15px;display:grid;place-items:center;
+  background:linear-gradient(145deg,var(--primary),#a6ebf3);color:white;font-size:29px;box-shadow:0 10px 28px rgba(69,185,213,.27)}
+.auth-card h2{text-align:center;margin:0 0 5px;font-size:24px}.auth-card .auth-sub{text-align:center;color:var(--muted);font-size:12px;line-height:1.65;margin-bottom:20px}
+.auth-card .field{margin:11px 0}.auth-card input{font-size:14px;padding:12px 13px}
+.auth-login-btn{width:100%;margin-top:7px;padding:12px 14px}
+.auth-msg{min-height:20px;margin-top:12px;text-align:center;color:var(--muted);font-size:12px;line-height:1.6}
+.auth-msg.error{color:#b65068}.auth-msg.ok{color:#278d70}
+.auth-tip{margin-top:17px;padding-top:14px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.7;text-align:center}
+body.auth-locked .app{visibility:hidden}
+.user-line{margin-top:7px;word-break:break-all;color:var(--deep)}
+.side-logout{margin-top:8px;width:100%;border:1px solid var(--line);background:rgba(255,255,255,.62);border-radius:11px;padding:7px 8px;color:var(--deep);font-size:11px}
+.status.offline i{background:#aebfc5;box-shadow:0 0 0 4px rgba(174,191,197,.14)}
+
 @media(max-width:1050px){.app{grid-template-columns:220px 1fr}.grid-4{grid-template-columns:repeat(2,1fr)}.lower,.charts{grid-template-columns:1fr}}
 @media(max-width:780px){
   .app{display:block}.sidebar{position:fixed;width:276px;left:0;top:0;transform:translateX(-105%);transition:.24s;z-index:80}.sidebar.open{transform:none}.drawer-mask{display:block;position:fixed;inset:0;background:rgba(39,82,94,.16);z-index:70;opacity:0;pointer-events:none;transition:.2s}.drawer-mask.show{opacity:1;pointer-events:auto}
@@ -91,7 +119,7 @@ button,input,select,textarea{font:inherit;color:inherit} button{cursor:pointer}
 }
 </style>
 </head>
-<body>
+<body class="auth-locked">
 <div class="app">
 <aside class="sidebar" id="sidebar">
   <div class="brand"><div class="logo">✦</div><div><h1>教师工作台</h1><small>智能校园管理 · 个人工作空间</small></div></div>
@@ -117,8 +145,10 @@ button,input,select,textarea{font:inherit;color:inherit} button{cursor:pointer}
   </div></div>
   <div class="side-foot">
     <div>本地自动保存：<b style="color:#299977">已开启</b></div>
-    <div>核心数据：浏览器 localStorage</div>
-    <div>版本：Teacher Workbench v1.0</div>
+    <div>云端自动同步：<b style="color:#299977">已开启</b></div>
+    <div class="user-line" id="userEmail">未登录</div>
+    <button class="side-logout" id="logoutBtn">退出登录</button>
+    <div style="margin-top:7px">版本：Teacher Workbench v1.1</div>
   </div>
 </aside>
 <div class="drawer-mask" id="drawerMask"></div>
@@ -132,8 +162,8 @@ button,input,select,textarea{font:inherit;color:inherit} button{cursor:pointer}
   <button class="icon-btn" id="importBtn" title="导入 Excel / Word / JSON">⇧</button>
   <button class="icon-btn" id="backupBtn" title="导出备份">⇩</button>
   <button class="icon-btn" id="themeBtn" title="主题">◐</button>
-  <div class="status" id="cloudStatus" title="Supabase 云同步"><i></i><span>云端未配置</span></div>
-  <button class="icon-btn" id="cloudBtn" title="Supabase 云同步">☁</button>
+  <div class="status" id="cloudStatus" title="点击立即同步"><i></i><span>正在检查登录</span></div>
+  <button class="icon-btn" id="cloudBtn" title="立即同步">↻</button>
   <div class="clock"><strong id="clockTime">--:--</strong><small id="clockDate">----</small></div>
 </header>
 
@@ -178,32 +208,41 @@ button,input,select,textarea{font:inherit;color:inherit} button{cursor:pointer}
   <div class="modal-actions"><button class="btn" id="closeImport">关闭</button></div>
 </div></div>
 
-<div class="modal-mask" id="cloudModal"><div class="modal">
-  <h3>Supabase 云同步</h3>
-  <div class="form-grid">
-    <div class="field full"><label>Project URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co"></div>
-    <div class="field full"><label>Anon Key</label><input id="sbKey" placeholder="Supabase anon/public key"></div>
-    <div class="field"><label>同步记录 ID</label><input id="sbRecord" value="teacher-workbench-main"></div>
-    <div class="field"><label>表名</label><input id="sbTable" value="teacher_workbench"></div>
+
+<div class="auth-gate" id="authGate">
+  <div class="auth-card">
+    <div class="auth-mark">✦</div>
+    <h2>教师工作台</h2>
+    <div class="auth-sub">教师账号登录后进入工作台。<br>数据同时保存在本机，并自动同步到 Supabase 云端。</div>
+    <div class="field"><label>教师邮箱</label><input id="loginEmail" type="email" autocomplete="username" placeholder="请输入已创建的教师邮箱"></div>
+    <div class="field"><label>登录密码</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="请输入教师账号密码"></div>
+    <button class="btn primary auth-login-btn" id="loginBtn">登录教师工作台</button>
+    <div class="auth-msg" id="loginMsg"></div>
+    <div class="auth-tip">本系统不开放自行注册。新教师账号请由管理员在 Supabase 后台创建。</div>
   </div>
-  <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-top:10px">推荐表结构：id text primary key，payload jsonb，updated_at timestamptz。请在 Supabase 中配置合适的 RLS 策略。此处只保存 anon key，不应填写 service_role key。</div>
-  <div class="modal-actions"><button class="btn" id="cloudClose">关闭</button><button class="btn" id="cloudTest">测试连接</button><button class="btn" id="cloudPull">从云端拉取</button><button class="btn primary" id="cloudPush">同步到云端</button></div>
-</div></div>
+</div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const LS="teacherWorkbench_v1";
+const LEGACY_LS="teacherWorkbench_v1";
+const CACHE_PREFIX="teacherWorkbench_v11_";
+const SUPABASE_URL="https://ftfhnepsheoooqltegbw.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_PhWQd_Eo08ow3vNFM1PU7w_artkL2Sz";
+const CLOUD_TABLE="teacher_workbench";
+const sb=window.supabase ? window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
+  auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+}) : null;
+
 const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
 const today=()=>new Date().toISOString().slice(0,10);
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const n=v=>Number(v)||0;
 
 const defaultState={
- version:"1.0",
+ version:"1.1",
  classes:[{id:"c10",name:"2026级10班"},{id:"c11",name:"2026级11班"}],
  currentClassId:"c10", theme:"blue",
- cloud:{url:"",key:"",record:"teacher-workbench-main",table:"teacher_workbench"},
  todos:[
   {id:uid(),classId:"c10",date:today(),time:"07:50",type:"班级",category:"管理类",title:"晨检点名",note:"",done:false},
   {id:uid(),classId:"c10",date:today(),time:"08:00",type:"自习",category:"教学类",title:"早读巡视",note:"",done:false},
@@ -217,14 +256,45 @@ const defaultState={
   {id:uid(),classId:"c11",day:"周二",period:2,subject:"英语",teacher:"我",room:"2026级11班"}
  ],
  students:[], exams:[], scores:[], homework:[], leaves:[],
- parents:[], visits:[], meetings:[], notices:[], seats:[], classMeetings:[], duties:[], dorms:[], committee:[], activities:[]
+ parents:[], visits:[], meetings:[], notices:[], seats:[], classMeetings:[], duties:[], dorms:[], committee:[], activities:[],
+ _syncMeta:{lastLocalChange:null,lastSyncedAt:null}
 };
-let state=loadState();
+let state=structuredClone(defaultState);
 let currentPage="dashboard";
 let modalCtx=null;
+let currentUser=null;
+let syncTimer=null;
+let syncBusy=false;
 
-function loadState(){try{const x=JSON.parse(localStorage.getItem(LS));return x&&x.version?Object.assign(structuredClone(defaultState),x):structuredClone(defaultState)}catch(e){return structuredClone(defaultState)}}
-function save(msg="已自动保存"){localStorage.setItem(LS,JSON.stringify(state));updateCloudBadge();if(msg)toast(msg)}
+function cacheKey(){return currentUser ? CACHE_PREFIX+currentUser.id : LEGACY_LS}
+function normalizeState(x){
+ const y=Object.assign(structuredClone(defaultState),x||{});
+ y.version="1.1";
+ delete y.cloud;
+ y._syncMeta=Object.assign({lastLocalChange:null,lastSyncedAt:null},y._syncMeta||{});
+ return y
+}
+function loadLocalForUser(){
+ let raw=localStorage.getItem(CACHE_PREFIX+currentUser.id),fromLegacy=false;
+ if(!raw){raw=localStorage.getItem(LEGACY_LS);fromLegacy=!!raw}
+ try{state=raw?normalizeState(JSON.parse(raw)):structuredClone(defaultState)}catch(e){state=structuredClone(defaultState)}
+ return {hasLocal:!!raw,fromLegacy}
+}
+function writeLocal(){
+ if(!currentUser)return;
+ localStorage.setItem(CACHE_PREFIX+currentUser.id,JSON.stringify(state))
+}
+function save(msg="已自动保存",sync=true){
+ if(currentUser){
+  state.version="1.1";
+  state._syncMeta=state._syncMeta||{};
+  state._syncMeta.lastLocalChange=new Date().toISOString();
+  writeLocal();
+  if(sync)scheduleCloudSync()
+ }
+ updateCloudBadge(navigator.onLine?"connected":"offline");
+ if(msg)toast(msg)
+}
 function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>t.classList.remove("show"),1500)}
 function curClass(){return state.classes.find(x=>x.id===state.currentClassId)||state.classes[0]}
 function scoped(arr){return arr.filter(x=>!x.classId||x.classId===state.currentClassId)}
@@ -475,7 +545,7 @@ function openImport(){document.getElementById("importResult").innerHTML="";docum
 async function handleFile(file){
  const out=document.getElementById("importResult");out.textContent="正在识别文件…";
  try{
-  if(file.name.toLowerCase().endsWith(".json")){const txt=await file.text(),data=JSON.parse(txt);if(!data.version)throw new Error("不是教师工作台备份文件");state=Object.assign(structuredClone(defaultState),data);save("备份已恢复");renderClassSelect();setTheme(state.theme);showPage("dashboard");out.textContent="✅ JSON 备份已恢复。";return}
+  if(file.name.toLowerCase().endsWith(".json")){const txt=await file.text(),data=JSON.parse(txt);if(!data.version)throw new Error("不是教师工作台备份文件");state=normalizeState(data);state._syncMeta.lastLocalChange=new Date().toISOString();save("备份已恢复");renderClassSelect();setTheme(state.theme);showPage("dashboard");out.textContent="✅ JSON 备份已恢复。";return}
   if(/\.(xlsx|xls)$/i.test(file.name)){if(typeof XLSX==="undefined")throw new Error("Excel 解析库未加载，请联网后重试");const buf=await file.arrayBuffer(),wb=XLSX.read(buf,{type:"array"});let total=0,details=[];for(const sn of wb.SheetNames){const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:""});const r=autoClassifyRows(rows,sn);total+=r.count;details.push(`${sn}：${r.type} ${r.count} 条`)}save("Excel 导入完成");out.innerHTML=`✅ 已自动归档 ${total} 条记录。<br>${details.map(esc).join("<br>")}`;showPage(currentPage);return}
   if(/\.docx$/i.test(file.name)){if(typeof mammoth==="undefined")throw new Error("Word 解析库未加载，请联网后重试");const buf=await file.arrayBuffer(),res=await mammoth.extractRawText({arrayBuffer:buf});const lines=res.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);state.notes.push({id:uid(),classId:state.currentClassId,date:today(),title:`Word导入：${file.name}`,tag:"自动归档",content:lines.join("\n")});save("Word 已归档到笔记");out.textContent=`✅ Word 内容已提取并归档到“待办备忘 → 笔记”，共 ${lines.length} 行。`;return}
   if(/\.(png|jpg|jpeg|webp)$/i.test(file.name)){if(typeof Tesseract==="undefined")throw new Error("图片 OCR 库未加载，请联网后重试");out.textContent="正在 OCR 识别课程表图片，首次加载识别引擎可能稍慢…";const res=await Tesseract.recognize(file,"chi_sim+eng");const text=res.data.text||"";const count=parseScheduleOCR(text);state.notes.push({id:uid(),classId:state.currentClassId,date:today(),title:`课程表图片OCR：${file.name}`,tag:"OCR原文",content:text});save("课程表图片识别完成");out.textContent=count?`✅ OCR 完成，自动识别并加入 ${count} 节课程；原始识别文字已同时保存在笔记中。`:`⚠️ OCR 已完成，但未可靠识别出“星期+节次+科目”的课程行。原文已保存到笔记，可据此手工补充课程。`;return}
@@ -496,30 +566,141 @@ function autoClassifyRows(rows,sheetName){
 }
 
 function updateCloudBadge(status){
- const el=document.getElementById("cloudStatus");el.className="status";let text="云端未配置";
- if(status==="syncing"){el.classList.add("syncing");text="同步中"}
+ const el=document.getElementById("cloudStatus");if(!el)return;
+ el.className="status";
+ let text="未登录";
+ if(!currentUser){text="未登录"}
+ else if(!navigator.onLine||status==="offline"){el.classList.add("offline");text="仅本机保存"}
+ else if(status==="syncing"){el.classList.add("syncing");text="云端同步中"}
  else if(status==="failed"){el.classList.add("failed");text="同步失败"}
- else if(state.cloud.url&&state.cloud.key){el.classList.add("connected");text="云端已配置"}
- el.querySelector("span").textContent=text;
+ else{el.classList.add("connected");text=status==="synced"?"云端已同步":"云端已连接"}
+ el.querySelector("span").textContent=text
 }
-function cloudHeaders(){return{"apikey":state.cloud.key,"Authorization":"Bearer "+state.cloud.key,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"}}
-async function cloudTest(){
- readCloudForm();if(!state.cloud.url||!state.cloud.key)return toast("请填写 Supabase URL 和 anon key");updateCloudBadge("syncing");
- try{const r=await fetch(`${state.cloud.url}/rest/v1/${encodeURIComponent(state.cloud.table)}?select=id&limit=1`,{headers:cloudHeaders()});if(!r.ok)throw new Error(await r.text());updateCloudBadge();toast("Supabase 连接成功")}
- catch(e){updateCloudBadge("failed");toast("连接失败，请检查表、RLS 与密钥")}
+function setLoginMsg(msg,kind=""){
+ const el=document.getElementById("loginMsg");el.textContent=msg||"";el.className="auth-msg"+(kind?" "+kind:"")
 }
-async function cloudPush(){
- readCloudForm();if(!state.cloud.url||!state.cloud.key)return toast("请先配置 Supabase");updateCloudBadge("syncing");
- try{const payload={...state};delete payload.cloud;const r=await fetch(`${state.cloud.url}/rest/v1/${encodeURIComponent(state.cloud.table)}?on_conflict=id`,{method:"POST",headers:cloudHeaders(),body:JSON.stringify([{id:state.cloud.record,payload,updated_at:new Date().toISOString()}])});if(!r.ok)throw new Error(await r.text());save("");updateCloudBadge();toast("已同步到云端")}
- catch(e){updateCloudBadge("failed");toast("同步失败，请检查 RLS/表结构")}
+function showLogin(){
+ document.body.classList.add("auth-locked");
+ document.getElementById("authGate").classList.remove("hidden");
+ document.getElementById("loginPassword").value="";
+ document.getElementById("userEmail").textContent="未登录";
+ updateCloudBadge()
 }
-async function cloudPull(){
- readCloudForm();if(!state.cloud.url||!state.cloud.key)return toast("请先配置 Supabase");updateCloudBadge("syncing");
- try{const r=await fetch(`${state.cloud.url}/rest/v1/${encodeURIComponent(state.cloud.table)}?id=eq.${encodeURIComponent(state.cloud.record)}&select=payload`,{headers:cloudHeaders()});if(!r.ok)throw new Error(await r.text());const data=await r.json();if(!data.length)throw new Error("云端无记录");const cloud=state.cloud;state=Object.assign(structuredClone(defaultState),data[0].payload,{cloud});save("");renderClassSelect();setTheme(state.theme);showPage("dashboard");updateCloudBadge();toast("已从云端拉取")}
- catch(e){updateCloudBadge("failed");toast("拉取失败："+e.message)}
+function hideLogin(){
+ document.getElementById("authGate").classList.add("hidden");
+ document.body.classList.remove("auth-locked")
 }
-function readCloudForm(){state.cloud.url=document.getElementById("sbUrl").value.trim().replace(/\/$/,"");state.cloud.key=document.getElementById("sbKey").value.trim();state.cloud.record=document.getElementById("sbRecord").value.trim()||"teacher-workbench-main";state.cloud.table=document.getElementById("sbTable").value.trim()||"teacher_workbench";save("")}
-function openCloud(){document.getElementById("sbUrl").value=state.cloud.url||"";document.getElementById("sbKey").value=state.cloud.key||"";document.getElementById("sbRecord").value=state.cloud.record||"teacher-workbench-main";document.getElementById("sbTable").value=state.cloud.table||"teacher_workbench";document.getElementById("cloudModal").classList.add("show")}
+async function signIn(){
+ if(!sb)return setLoginMsg("Supabase 登录组件加载失败，请检查网络后刷新页面。","error");
+ const email=document.getElementById("loginEmail").value.trim(),password=document.getElementById("loginPassword").value;
+ if(!email||!password)return setLoginMsg("请输入教师邮箱和密码。","error");
+ const btn=document.getElementById("loginBtn");btn.disabled=true;btn.textContent="正在登录…";setLoginMsg("");
+ try{
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  if(error)throw error;
+  localStorage.setItem("teacherWorkbench_lastEmail",email);
+  await initializeForSession(data.session)
+ }catch(e){
+  setLoginMsg(e.message?.includes("Invalid login credentials")?"邮箱或密码不正确。":("登录失败："+(e.message||"未知错误")),"error")
+ }finally{btn.disabled=false;btn.textContent="登录教师工作台"}
+}
+async function signOut(){
+ if(!sb)return;
+ if(!confirm("确定退出教师工作台吗？本机缓存不会被删除。"))return;
+ await sb.auth.signOut();
+ currentUser=null;state=structuredClone(defaultState);showLogin()
+}
+function payloadForCloud(){
+ const p=structuredClone(state);delete p.cloud;return p
+}
+function scheduleCloudSync(){
+ clearTimeout(syncTimer);
+ syncTimer=setTimeout(()=>syncNow(false),900)
+}
+async function fetchRemote(){
+ const {data,error}=await sb.from(CLOUD_TABLE).select("payload,updated_at").eq("user_id",currentUser.id).maybeSingle();
+ if(error)throw error;
+ return data
+}
+async function pushLocal(showToast=false){
+ if(!currentUser||!navigator.onLine||syncBusy)return;
+ syncBusy=true;updateCloudBadge("syncing");
+ try{
+  const now=new Date().toISOString();
+  const {data,error}=await sb.from(CLOUD_TABLE).upsert({
+    user_id:currentUser.id,payload:payloadForCloud(),updated_at:now
+  },{onConflict:"user_id"}).select("updated_at").single();
+  if(error)throw error;
+  state._syncMeta=state._syncMeta||{};
+  state._syncMeta.lastSyncedAt=data?.updated_at||now;
+  writeLocal();updateCloudBadge("synced");
+  if(showToast)toast("已同步到云端")
+ }catch(e){
+  console.error(e);updateCloudBadge("failed");
+  if(showToast)toast("云同步失败，请稍后重试")
+ }finally{syncBusy=false}
+}
+function applyRemote(remote){
+ const localMeta=state._syncMeta||{};
+ state=normalizeState(remote.payload||{});
+ state._syncMeta.lastLocalChange=remote.updated_at||localMeta.lastLocalChange||new Date().toISOString();
+ state._syncMeta.lastSyncedAt=remote.updated_at||new Date().toISOString();
+ writeLocal();renderClassSelect();setTheme(state.theme);showPage(currentPage)
+}
+async function syncNow(showToast=false){
+ if(!currentUser)return showLogin();
+ if(!navigator.onLine){updateCloudBadge("offline");if(showToast)toast("当前离线，数据已保存在本机");return}
+ if(syncBusy)return;
+ syncBusy=true;updateCloudBadge("syncing");
+ try{
+  const remote=await fetchRemote();
+  if(!remote){
+   syncBusy=false;return await pushLocal(showToast)
+  }
+  const localTime=Date.parse(state._syncMeta?.lastLocalChange||0)||0;
+  const remoteTime=Date.parse(remote.updated_at||0)||0;
+  if(remoteTime>localTime+500){
+   applyRemote(remote);updateCloudBadge("synced");if(showToast)toast("已获取云端最新数据")
+  }else if(localTime>remoteTime+500){
+   syncBusy=false;return await pushLocal(showToast)
+  }else{
+   state._syncMeta.lastSyncedAt=remote.updated_at||state._syncMeta.lastSyncedAt;writeLocal();updateCloudBadge("synced");if(showToast)toast("本机与云端已一致")
+  }
+ }catch(e){
+  console.error(e);updateCloudBadge("failed");if(showToast)toast("同步失败："+(e.message||"请检查网络"))
+ }finally{syncBusy=false}
+}
+async function initializeForSession(session){
+ if(!session?.user)return showLogin();
+ currentUser=session.user;
+ const info=loadLocalForUser();
+ document.getElementById("userEmail").textContent=currentUser.email||"教师账号";
+ document.getElementById("loginEmail").value=currentUser.email||"";
+ hideLogin();renderClassSelect();setTheme(state.theme);showPage("dashboard");updateCloudBadge("syncing");
+ if(!navigator.onLine){updateCloudBadge("offline");toast("已进入工作台，当前离线，仅保存在本机");return}
+ try{
+  const remote=await fetchRemote();
+  if(!remote){
+   await pushLocal(false);
+   toast(info.fromLegacy?"旧版本机数据已安全迁移到云端":"首次云端工作区已创建")
+  }else if(!info.hasLocal){
+   applyRemote(remote);updateCloudBadge("synced");toast("已从云端载入工作台数据")
+  }else{
+   const localTime=Date.parse(state._syncMeta?.lastLocalChange||0)||0,remoteTime=Date.parse(remote.updated_at||0)||0;
+   if(localTime>remoteTime+500)await pushLocal(false);
+   else{applyRemote(remote);updateCloudBadge("synced")}
+  }
+ }catch(e){console.error(e);updateCloudBadge("failed");toast("云端暂时不可用，已使用本机数据")}
+}
+async function bootstrapAuth(){
+ const last=localStorage.getItem("teacherWorkbench_lastEmail");if(last)document.getElementById("loginEmail").value=last;
+ if(!sb){setLoginMsg("Supabase 组件加载失败。请保持联网并刷新页面。","error");return}
+ try{
+  const {data,error}=await sb.auth.getSession();if(error)throw error;
+  if(data.session)await initializeForSession(data.session);else showLogin()
+ }catch(e){setLoginMsg("登录状态检查失败："+(e.message||"未知错误"),"error");showLogin()}
+ sb.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"&&!session){currentUser=null;showLogin()}})
+}
 
 document.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=()=>b.parentElement.classList.toggle("open"));
 document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
@@ -539,12 +720,15 @@ document.getElementById("backupBtn").onclick=backup;
 document.getElementById("importBtn").onclick=openImport;
 document.getElementById("closeImport").onclick=()=>document.getElementById("importModal").classList.remove("show");
 document.getElementById("fileInput").onchange=e=>{const f=e.target.files[0];if(f)handleFile(f);e.target.value=""};
-document.getElementById("cloudBtn").onclick=openCloud;
-document.getElementById("cloudStatus").onclick=openCloud;
-document.getElementById("cloudClose").onclick=()=>document.getElementById("cloudModal").classList.remove("show");
-document.getElementById("cloudTest").onclick=cloudTest;document.getElementById("cloudPush").onclick=cloudPush;document.getElementById("cloudPull").onclick=cloudPull;
+document.getElementById("cloudBtn").onclick=()=>syncNow(true);
+document.getElementById("cloudStatus").onclick=()=>syncNow(true);
+document.getElementById("loginBtn").onclick=signIn;
+document.getElementById("loginPassword").addEventListener("keydown",e=>{if(e.key==="Enter")signIn()});
+document.getElementById("logoutBtn").onclick=signOut;
+window.addEventListener("online",()=>{updateCloudBadge("syncing");syncNow(false)});
+window.addEventListener("offline",()=>updateCloudBadge("offline"));
 
-renderClassSelect();setTheme(state.theme);updateCloudBadge();showPage("dashboard");
+setTheme(state.theme);updateCloudBadge();bootstrapAuth();
 </script>
 </body>
 </html>
