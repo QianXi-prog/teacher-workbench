@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="教师工作台">
-<title>教师工作台 · v1.2</title>
+<title>教师工作台 · v1.3</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -112,6 +112,37 @@ body.auth-locked .app{visibility:hidden}
 .side-logout{margin-top:8px;width:100%;border:1px solid var(--line);background:rgba(255,255,255,.62);border-radius:11px;padding:7px 8px;color:var(--deep);font-size:11px}
 .status.offline i{background:#aebfc5;box-shadow:0 0 0 4px rgba(174,191,197,.14)}
 
+
+/* v1.3：DDL提醒、DIY座位表、附件留痕 */
+.deadline-list{display:grid;gap:8px}
+.deadline-item{display:grid;grid-template-columns:76px 1fr auto;gap:10px;align-items:center;padding:10px;border-radius:14px;background:rgba(255,255,255,.46)}
+.deadline-date{font-size:11px;color:var(--deep);font-weight:800}
+.deadline-main b{display:block;font-size:12px;margin-bottom:4px}.deadline-main small{color:var(--muted);font-size:10px}
+.countdown{font-size:10px;padding:5px 8px;border-radius:999px;background:#eef9fc;color:var(--deep);white-space:nowrap}
+.countdown.overdue{background:#ffecef;color:#a85167}.countdown.today{background:#fff3d8;color:#98701b}
+.record-done td:not(:last-child){opacity:.52;text-decoration:line-through}
+.seat-shell{overflow:auto;padding-bottom:5px}
+.podium{margin:0 auto 16px;min-width:260px;max-width:520px;text-align:center;padding:11px 18px;border:1px solid rgba(55,145,170,.2);border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.88),rgba(122,215,233,.16));font-weight:850;color:var(--deep);box-shadow:0 8px 22px rgba(65,133,153,.08)}
+.podium.bottom{margin:16px auto 0}
+.seat-custom-grid{display:grid;gap:8px;min-width:max-content;align-items:stretch}
+.seat-custom-grid .seat{min-width:82px;min-height:64px}
+.aisle-cell{min-width:24px;display:grid;place-items:center;color:var(--muted);font-size:9px;writing-mode:vertical-rl;letter-spacing:3px;background:rgba(255,255,255,.18);border-radius:12px}
+.seat-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.seat-summary span{padding:7px 10px;border-radius:12px;background:rgba(255,255,255,.62);font-size:11px;color:var(--muted)}
+.seat-summary b{color:var(--deep)}
+.attach-cell{white-space:nowrap}
+.attachment-list{display:grid;gap:9px}
+.attachment-item{display:grid;grid-template-columns:54px 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.56)}
+.attachment-thumb{width:54px;height:54px;border-radius:12px;background:#eff8fb;display:grid;place-items:center;overflow:hidden;font-size:24px}
+.attachment-thumb img{width:100%;height:100%;object-fit:cover}
+.attachment-info{min-width:0}.attachment-info b{font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.attachment-info small{color:var(--muted);font-size:10px}
+.attachment-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.upload-note{font-size:11px;color:var(--muted);line-height:1.65;padding:10px 12px;border-radius:13px;background:rgba(255,255,255,.5);margin-bottom:10px}
+@media(max-width:780px){
+ .deadline-item{grid-template-columns:64px 1fr}.deadline-item .countdown{grid-column:2;justify-self:start}
+ .attachment-item{grid-template-columns:46px 1fr}.attachment-thumb{width:46px;height:46px}.attachment-actions{grid-column:1/-1;justify-content:flex-start}
+}
+
 @media(max-width:1050px){.app{grid-template-columns:220px 1fr}.grid-4{grid-template-columns:repeat(2,1fr)}.lower,.charts{grid-template-columns:1fr}}
 @media(max-width:780px){
   .app{display:block}.sidebar{position:fixed;width:276px;left:0;top:0;transform:translateX(-105%);transition:.24s;z-index:80}.sidebar.open{transform:none}.drawer-mask{display:block;position:fixed;inset:0;background:rgba(39,82,94,.16);z-index:70;opacity:0;pointer-events:none;transition:.2s}.drawer-mask.show{opacity:1;pointer-events:auto}
@@ -148,7 +179,7 @@ body.auth-locked .app{visibility:hidden}
     <div>云端自动同步：<b style="color:#299977">已开启</b></div>
     <div class="user-line" id="userEmail">未登录</div>
     <button class="side-logout" id="logoutBtn">退出登录</button>
-    <div style="margin-top:7px">版本：Teacher Workbench v1.2</div>
+    <div style="margin-top:7px">版本：Teacher Workbench v1.3</div>
   </div>
 </aside>
 <div class="drawer-mask" id="drawerMask"></div>
@@ -222,6 +253,16 @@ body.auth-locked .app{visibility:hidden}
   </div>
 </div>
 
+
+<div class="modal-mask" id="attachmentModal"><div class="modal">
+  <h3 id="attachmentTitle">资料附件</h3>
+  <div class="upload-note">支持照片、Word、Excel、PDF、PPT、文本等文件。单个文件建议不超过 20 MB。附件保存在登录教师自己的 Supabase 私有存储目录中，不写入 GitHub，也不塞入浏览器 localStorage。</div>
+  <input id="attachmentInput" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx,.pdf,.ppt,.pptx,.txt" style="display:none">
+  <div class="actions" style="justify-content:flex-start;margin-bottom:12px"><button class="btn primary" id="attachmentUploadBtn">＋ 上传资料</button></div>
+  <div id="attachmentList" class="attachment-list"></div>
+  <div class="modal-actions"><button class="btn" id="attachmentClose">关闭</button></div>
+</div></div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -240,7 +281,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const n=v=>Number(v)||0;
 
 const defaultState={
- version:"1.2",
+ version:"1.3",
  classes:[{id:"c10",name:"2026级10班"},{id:"c11",name:"2026级11班"}],
  currentClassId:"c10", theme:"blue",
  todos:[
@@ -256,7 +297,7 @@ const defaultState={
   {id:uid(),classId:"c11",day:"周二",period:2,subject:"英语",teacher:"我",room:"2026级11班"}
  ],
  students:[], exams:[], scores:[], homework:[], leaves:[], attendance:[],
- parents:[], visits:[], meetings:[], notices:[], seats:[], classMeetings:[], duties:[], dorms:[], committee:[], activities:[],
+ parents:[], visits:[], meetings:[], notices:[], seats:[], seatLayouts:[], classMeetings:[], duties:[], dorms:[], committee:[], activities:[],
  _syncMeta:{lastLocalChange:null,lastSyncedAt:null}
 };
 let state=structuredClone(defaultState);
@@ -269,9 +310,9 @@ let syncBusy=false;
 function cacheKey(){return currentUser ? CACHE_PREFIX+currentUser.id : LEGACY_LS}
 function normalizeState(x){
  const y=Object.assign(structuredClone(defaultState),x||{});
- y.version="1.2";
+ y.version="1.3";
  delete y.cloud;
- ["classes","todos","notes","reminders","growth","traces","prep","schedules","students","exams","scores","homework","leaves","attendance","parents","visits","meetings","notices","seats","classMeetings","duties","dorms","committee","activities"].forEach(k=>{if(!Array.isArray(y[k]))y[k]=[]});
+ ["classes","todos","notes","reminders","growth","traces","prep","schedules","students","exams","scores","homework","leaves","attendance","parents","visits","meetings","notices","seats","seatLayouts","classMeetings","duties","dorms","committee","activities"].forEach(k=>{if(!Array.isArray(y[k]))y[k]=[]});
  y._syncMeta=Object.assign({lastLocalChange:null,lastSyncedAt:null},y._syncMeta||{});
  return y
 }
@@ -287,7 +328,7 @@ function writeLocal(){
 }
 function save(msg="已自动保存",sync=true){
  if(currentUser){
-  state.version="1.2";
+  state.version="1.3";
   state._syncMeta=state._syncMeta||{};
   state._syncMeta.lastLocalChange=new Date().toISOString();
   writeLocal();
@@ -314,10 +355,10 @@ const configs={
   ["date","日期","date"],["time","时间","time"],["type","类型","select",["备课","教研","授课","批改","会议","辅导","自习","值班","查寝","班级","家校","行政","个人"]],["category","分类","select",["教学类","管理类"]],["title","事项","text"],["note","备注","textarea"]
  ]},
  notes:{title:"笔记",desc:"班主任与任课教师日常随手记录。",store:"notes",fields:[["date","日期","date"],["title","标题","text"],["tag","标签","text"],["content","内容","textarea"]]},
- reminders:{title:"重要提醒",desc:"重要事项置顶与完成留痕。",store:"reminders",fields:[["date","提醒日期","date"],["time","时间","time"],["title","提醒内容","text"],["level","重要程度","select",["一般","重要","紧急"]],["done","已完成","checkbox"]]},
- growth:{title:"成长记录",desc:"记录教师专业成长，自动统计累计记录与学习时长。",store:"growth",fields:[["date","日期","date"],["type","类型","select",["📖 阅读书籍/文章","🎓 参加培训","💭 教学反思","🔬 教学研究","👁️ 观摩听课","✨ 其他"]],["title","标题","text"],["hours","时长（小时）","number"],["reflection","心得体会","textarea"]]},
- trace:{title:"工作留痕",desc:"教学、技能提升、班级事务与其他工作记录。",store:"traces",fields:[["date","日期","date"],["type","类型","select",["教学","技能提升","班级事务","其他"]],["title","事项","text"],["record","记录","textarea"]]},
- prep:{title:"备课中心",desc:"教案与外部视频资源统一归档，链接可一键跳转原平台。",store:"prep",fields:[["topic","课题","text"],["grade","年级/班级","text"],["date","日期","date"],["design","教学设计/教案","textarea"],["platform","视频平台","select",["--","抖音","B站","网页","其他"]],["url","原平台链接","url"]]},
+ reminders:{title:"重要提醒",desc:"按截止日期管理重要事项，可设置提前显示天数，并在仪表盘提前提示。",store:"reminders",fields:[["date","截止日期（DDL）","date"],["time","截止时间","time"],["title","提醒内容","text"],["level","重要程度","select",["一般","重要","紧急"]],["leadDays","提前显示（天）","number"],["done","已完成","checkbox"]]},
+ growth:{title:"成长记录",desc:"记录教师专业成长，支持 Word、Excel、PDF、照片等资料附件。",store:"growth",fields:[["date","日期","date"],["type","类型","select",["📖 阅读书籍/文章","🎓 参加培训","💭 教学反思","🔬 教学研究","👁️ 观摩听课","✨ 其他"]],["title","标题","text"],["hours","时长（小时）","number"],["reflection","心得体会","textarea"]]},
+ trace:{title:"工作留痕",desc:"教学、技能提升、班级事务与其他工作记录，支持照片和文档留痕。",store:"traces",fields:[["date","日期","date"],["type","类型","select",["教学","技能提升","班级事务","其他"]],["title","事项","text"],["record","记录","textarea"]]},
+ prep:{title:"备课中心",desc:"教案、课件资料和外部视频资源统一归档，支持文档与图片附件。",store:"prep",fields:[["topic","课题","text"],["grade","年级/班级","text"],["date","日期","date"],["design","教学设计/教案","textarea"],["platform","视频平台","select",["--","抖音","B站","网页","其他"]],["url","原平台链接","url"]]},
  classReminder:{title:"上课提醒",desc:"从当前班级课程表自动生成今日课程提醒。",special:"classReminder"},
  students:{title:"学生档案",desc:"学生基础信息管理，支持搜索筛选。",special:"students"},
  scores:{title:"成绩台账",desc:"考试管理、成绩录入、总分/排名、多维图表与历次趋势。",special:"scores"},
@@ -347,9 +388,34 @@ function showPage(name){
  if(innerWidth<=780){document.getElementById("sidebar").classList.remove("open");document.getElementById("drawerMask").classList.remove("show")}
 }
 
+function reminderDaysLeft(date){
+ if(!date)return null;
+ const a=new Date(today()+"T12:00:00"),b=new Date(date+"T12:00:00");
+ return Math.round((b-a)/86400000)
+}
+function reminderCountdown(r){
+ const d=reminderDaysLeft(r.date);
+ if(d===null)return {text:"未设DDL",cls:""};
+ if(d<0)return {text:`逾期 ${Math.abs(d)} 天`,cls:"overdue"};
+ if(d===0)return {text:"今天截止",cls:"today"};
+ if(d===1)return {text:"明天截止",cls:"today"};
+ return {text:`还有 ${d} 天`,cls:""}
+}
+function dashboardReminders(){
+ const weight={紧急:0,重要:1,一般:2};
+ return scoped(state.reminders).filter(r=>{
+  if(r.done||!r.date)return false;
+  const d=reminderDaysLeft(r.date),lead=Math.max(0,n(r.leadDays||7));
+  return d<=lead
+ }).sort((a,b)=>{
+  const ad=reminderDaysLeft(a.date),bd=reminderDaysLeft(b.date);
+  if(ad!==bd)return ad-bd;
+  return (weight[a.level]??9)-(weight[b.level]??9)
+ }).slice(0,6)
+}
 function renderDashboard(){
  const students=scoped(state.students),acts=scoped(state.activities).filter(x=>(x.date||"").slice(0,7)===today().slice(0,7)),todos=scoped(state.todos).filter(x=>x.date===today()).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
- const attendance=scoped(state.attendance).find(x=>x.date===today());
+ const attendance=scoped(state.attendance).find(x=>x.date===today()),reminders=dashboardReminders();
  const teaching=scoped(state.todos).filter(x=>x.category==="教学类"&&!x.done).length,management=scoped(state.todos).filter(x=>x.category==="管理类"&&!x.done).length;
  const attendanceRows=getRecentAttendance();
  const attendanceValue=attendance?attendance.present:"—";
@@ -357,15 +423,18 @@ function renderDashboard(){
  document.getElementById("page-dashboard").innerHTML=
  pageHeader("教师工作台",`${curClass().name} · 数据以实际录入内容为准。`,`<button class="btn" onclick="openAttendance()">登记今日考勤</button><button class="btn" onclick="openImport()">导入资料</button><button class="btn primary" onclick="openRecord('todo')">＋ 快速新增</button>`) +
  `<div class="grid-3">
-  <div class="card stat"><div class="label">👥 班级人数</div><div class="value">${students.length}<small style="font-size:13px"> 人</small></div><div class="sub">${students.length?`学生档案已录入 ${students.length} 人`:'尚未导入学生档案，不显示示例人数'}</div></div>
+  <div class="card stat"><div class="label">👥 班级人数</div><div class="value">${students.length}<small style="font-size:13px"> 人</small></div><div class="sub">${students.length?`学生档案已录入 ${students.length} 人`:'尚未导入学生档案'}</div></div>
   <div class="card stat"><div class="label">☀️ 今日出勤</div><div class="value">${attendanceValue}${attendance?'<small style="font-size:13px"> 人</small>':''}</div><div class="sub">${attendanceSub}</div></div>
   <div class="card stat"><div class="label">🎈 本月活动</div><div class="value">${acts.length}<small style="font-size:13px"> 项</small></div><div class="sub">点击“班级事务 → 活动档案”维护活动记录</div></div>
  </div>
- <div class="section kpi-strip"><div class="mini-kpi">教学类未完成 <b>${teaching}</b></div><div class="mini-kpi">管理类未完成 <b>${management}</b></div><div class="mini-kpi">今日待办 <b>${todos.length}</b></div><div class="mini-kpi">本月请假 <b>${scoped(state.leaves).filter(x=>(x.date||"").slice(0,7)===today().slice(0,7)).length}</b></div></div>
+ <div class="section kpi-strip"><div class="mini-kpi">教学类未完成 <b>${teaching}</b></div><div class="mini-kpi">管理类未完成 <b>${management}</b></div><div class="mini-kpi">今日待办 <b>${todos.filter(x=>!x.done).length}</b></div><div class="mini-kpi">进入提醒期 <b>${reminders.length}</b></div></div>
  <div class="lower">
   <div class="glass"><div class="section-head"><h3>今日待办</h3><span>${todos.length} 项</span></div>${todos.length?`<div class="timeline">${todos.map(x=>`<div class="todo ${x.done?"done":""}"><div class="todo-time">${esc(x.time||"--:--")}</div><div class="bullet"></div><div class="todo-title">${esc(x.title)}</div><button class="btn tiny" onclick="toggleDone('todos','${x.id}')">${x.done?"取消完成":"标记完成"}</button></div>`).join("")}</div>`:empty("🗓️","今天暂无待办","点击快速新增即可创建")}</div>
-  <div class="glass"><div class="section-head"><h3>月度考勤统计</h3><span>${today().slice(0,7)}</span></div>${attendanceRows.length?`<div class="table-wrap"><table><thead><tr><th>日期</th><th>出勤</th><th>迟到</th><th>请假</th><th>缺勤</th><th>操作</th></tr></thead><tbody>${attendanceRows.map(r=>`<tr><td>${esc(r.date)}</td><td>${n(r.present)}</td><td>${n(r.late)}</td><td>${n(r.leave)}</td><td>${n(r.absent)}</td><td><button class="btn tiny" onclick="openAttendance('${r.date}')">编辑</button></td></tr>`).join("")}</tbody></table></div>`:empty("📋","本月尚未登记考勤","点击“登记今日考勤”开始记录")}</div>
- </div>`;
+  <div class="glass"><div class="section-head"><h3>重要提醒 / DDL</h3><span><button class="btn tiny" onclick="openRecord('reminders')">＋ 新增提醒</button></span></div>
+   ${reminders.length?`<div class="deadline-list">${reminders.map(r=>{const c=reminderCountdown(r);return `<div class="deadline-item"><div class="deadline-date">${esc((r.date||"").slice(5))}<br>${esc(r.time||"")}</div><div class="deadline-main"><b>${esc(r.title)}</b><small>${esc(r.level||"一般")} · 提前 ${n(r.leadDays||7)} 天显示</small></div><div><span class="countdown ${c.cls}">${esc(c.text)}</span><br><button style="margin-top:5px" class="btn tiny" onclick="toggleReminder('${r.id}')">完成</button></div></div>`}).join("")}</div>`:empty("🔔","当前没有进入提醒期的事项","重要提醒会根据 DDL 和提前天数自动出现在这里")}
+  </div>
+ </div>
+ <div class="glass section"><div class="section-head"><h3>月度考勤统计</h3><span>${today().slice(0,7)}</span></div>${attendanceRows.length?`<div class="table-wrap"><table><thead><tr><th>日期</th><th>出勤</th><th>迟到</th><th>请假</th><th>缺勤</th><th>操作</th></tr></thead><tbody>${attendanceRows.map(r=>`<tr><td>${esc(r.date)}</td><td>${n(r.present)}</td><td>${n(r.late)}</td><td>${n(r.leave)}</td><td>${n(r.absent)}</td><td><button class="btn tiny" onclick="openAttendance('${r.date}')">编辑</button></td></tr>`).join("")}</tbody></table></div>`:empty("📋","本月尚未登记考勤","点击“登记今日考勤”开始记录")}</div>`;
 }
 function getRecentAttendance(){
  return scoped(state.attendance).filter(x=>(x.date||"").slice(0,7)===today().slice(0,7)).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
@@ -398,11 +467,16 @@ function renderGeneric(name){
  document.getElementById("page-generic").innerHTML=pageHeader(c.title,c.desc,`<button class="btn primary" onclick="openRecord('${name}')">＋ 新增</button>`)+extra+`<div class="glass section"><div class="toolbar"><input class="grow" placeholder="搜索..." oninput="filterRows(this.value)"><span style="font-size:11px;color:var(--muted)">共 ${arr.length} 条</span></div>${content}</div>`;
 }
 function genericHeaders(fields){return fields.map(x=>x[1])}
+function supportsAttachments(name){return ["growth","trace","prep"].includes(name)}
 function renderGenericTable(name,arr){
  const c=configs[name];if(!arr.length)return empty("📭","暂无记录","点击右上角新增第一条记录");
- const headers=genericHeaders(c.fields);
+ const headers=genericHeaders(c.fields),withAttach=supportsAttachments(name);
  const rows=arr.slice().sort((a,b)=>{const ak=(a.date||"")+(a.time||""),bk=(b.date||"")+(b.time||"");return ak||bk?bk.localeCompare(ak):0});
- return `<div class="table-wrap"><table id="dataTable"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}<th>操作</th></tr></thead><tbody>${rows.map(r=>`<tr>${c.fields.map(f=>`<td>${formatCell(f,r[f[0]])}</td>`).join("")}<td><button class="btn tiny" onclick="editRecord('${name}','${r.id}')">编辑</button> <button class="btn tiny danger" onclick="deleteRecord('${c.store}','${r.id}')">删除</button></td></tr>`).join("")}</tbody></table></div>`;
+ return `<div class="table-wrap"><table id="dataTable"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}${withAttach?"<th>资料附件</th>":""}<th>操作</th></tr></thead><tbody>${rows.map(r=>{
+  const reminderAction=name==="reminders"?`<button class="btn tiny" onclick="toggleReminder('${r.id}')">${r.done?"取消完成":"完成"}</button> `:"";
+  const attachCell=withAttach?`<td class="attach-cell"><button class="btn tiny" onclick="openAttachments('${c.store}','${r.id}')">附件 ${(r.attachments||[]).length}</button></td>`:"";
+  return `<tr class="${name==="reminders"&&r.done?"record-done":""}">${c.fields.map(f=>`<td>${formatCell(f,r[f[0]])}</td>`).join("")}${attachCell}<td>${reminderAction}<button class="btn tiny" onclick="editRecord('${name}','${r.id}')">编辑</button> <button class="btn tiny danger" onclick="deleteRecord('${c.store}','${r.id}')">删除</button></td></tr>`
+ }).join("")}</tbody></table></div>`;
 }
 function formatCell(f,v){
  if(f[2]==="checkbox")return v?'<span class="pill ok">是</span>':'<span class="pill warn">否</span>';
@@ -547,27 +621,84 @@ function deleteLeave(id){if(!confirm("确定删除这条请假记录吗？"))ret
 function toggleLeave(id){const r=state.leaves.find(x=>x.id===id);if(r){r.cancelled=!r.cancelled;save("销假状态已更新");renderSpecial("leave")}}
 function exportLeave(id){const r=state.leaves.find(x=>x.id===id);if(!r)return;const w=window.open("","_blank");if(!w)return toast("浏览器阻止了弹窗，请允许弹窗后重试");w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>请假条_${esc(r.student)}</title><style>body{font-family:"Microsoft YaHei",sans-serif;padding:45px;color:#222}.paper{max-width:680px;margin:auto}.title{text-align:center;font-size:28px;font-weight:700;margin-bottom:32px}.row{font-size:16px;line-height:2;border-bottom:1px solid #ddd}.sign{margin-top:50px;text-align:right}.print{margin-top:30px;text-align:center}.print button{padding:10px 18px}@media print{.print{display:none}}</style></head><body><div class="paper"><div class="title">请 假 条</div><div class="row">班级：${esc(curClass().name)}</div><div class="row">学生：${esc(r.student)}</div><div class="row">日期：${esc(r.date)}</div><div class="row">类型：${esc(r.type)}</div><div class="row">请假时长：${esc(r.duration)}</div><div class="row">事由：${esc(r.reason)}</div><div class="row">备注：${esc(r.note||"")}</div><div class="sign">班主任签字：____________</div><div class="print"><button onclick="window.print()">打印 / 另存为 PDF</button></div></div></body></html>`);w.document.close()}
 
+function getSeatLayout(){
+ let x=state.seatLayouts.find(v=>v.classId===state.currentClassId);
+ if(!x){x={id:uid(),classId:state.currentClassId,rows:6,cols:6,aisles:[3],podiumPosition:"top",podiumLabel:"讲台",template:"标准 6×6"};state.seatLayouts.push(x)}
+ x.rows=Math.max(1,Math.min(12,n(x.rows)||6));x.cols=Math.max(1,Math.min(12,n(x.cols)||6));
+ if(!Array.isArray(x.aisles))x.aisles=[];
+ return x
+}
+function seatTemplateColumns(layout){
+ let a=[];for(let c=1;c<=layout.cols;c++){a.push("minmax(82px,1fr)");if(layout.aisles.includes(c)&&c<layout.cols)a.push("24px")}
+ return a.join(" ")
+}
 function renderSeats(box){
- const students=scoped(state.students),seatMap={};scoped(state.seats).forEach(x=>seatMap[x.position]=x.studentId);
- const cells=Array.from({length:36},(_,i)=>i+1).map(pos=>{const sid=seatMap[pos],s=students.find(x=>x.id===sid);return `<button class="seat" onclick="assignSeat(${pos})"><b>${pos}号座位</b>${s?esc(s.name):"＋ 安排学生"}</button>`}).join("");
- box.innerHTML=pageHeader("座位表","6 × 6 座位模板，点击座位即可安排或更换学生。",`<button class="btn" onclick="clearSeats()">清空座位</button>`)+`<div class="glass"><div class="seat-grid">${cells}</div></div>`;
+ const students=scoped(state.students),layout=getSeatLayout(),seatMap={};scoped(state.seats).forEach(x=>seatMap[x.position]=x.studentId);
+ let cells="",pos=0;
+ for(let r=1;r<=layout.rows;r++){
+  for(let c=1;c<=layout.cols;c++){
+   pos++;const sid=seatMap[pos],s=students.find(x=>x.id===sid);
+   cells+=`<button class="seat" onclick="assignSeat(${pos})"><b>${r}-${c} · ${pos}号</b>${s?esc(s.name):"＋ 安排学生"}</button>`;
+   if(layout.aisles.includes(c)&&c<layout.cols)cells+=`<div class="aisle-cell">${r===Math.ceil(layout.rows/2)?"过道":""}</div>`
+  }
+ }
+ const used=Object.values(seatMap).filter(Boolean).length,total=layout.rows*layout.cols;
+ const podium=`<div class="podium ${layout.podiumPosition==="bottom"?"bottom":""}">▰ ${esc(layout.podiumLabel||"讲台")}</div>`;
+ box.innerHTML=pageHeader("座位表","支持模板和自定义布局，可设置行列、过道与讲台位置。",`<button class="btn" onclick="openSeatTemplates()">选择模板</button><button class="btn" onclick="openSeatSettings()">自定义布局</button><button class="btn" onclick="clearSeats()">清空座位</button>`)+
+ `<div class="glass"><div class="seat-summary"><span>模板 <b>${esc(layout.template||"自定义")}</b></span><span>座位 <b>${total}</b></span><span>已安排 <b>${used}</b></span><span>空位 <b>${Math.max(0,total-used)}</b></span><span>过道 <b>${layout.aisles.length}</b></span></div>
+ <div class="seat-shell">${layout.podiumPosition!=="bottom"?podium:""}<div class="seat-custom-grid" style="grid-template-columns:${seatTemplateColumns(layout)}">${cells}</div>${layout.podiumPosition==="bottom"?podium:""}</div></div>`;
+}
+function applySeatTemplate(key){
+ const t={
+  small:{name:"小班 5×6",rows:5,cols:6,aisles:[3]},
+  standard:{name:"标准 6×6",rows:6,cols:6,aisles:[3]},
+  large58:{name:"58人 6×10",rows:6,cols:10,aisles:[3,7]},
+  large56:{name:"大班 7×8",rows:7,cols:8,aisles:[2,6]}
+ }[key];if(!t)return;
+ const layout=getSeatLayout(),oldTotal=layout.rows*layout.cols,newTotal=t.rows*t.cols;
+ if(newTotal<oldTotal&&scoped(state.seats).some(s=>s.position>newTotal)&&!confirm("新模板座位数更少，超出范围的座位安排将被清除。是否继续？"))return;
+ Object.assign(layout,{rows:t.rows,cols:t.cols,aisles:t.aisles,template:t.name});
+ state.seats=state.seats.filter(s=>s.classId!==state.currentClassId||s.position<=newTotal);
+ save("座位表模板已应用");renderSpecial("seats")
+}
+function openSeatTemplates(){
+ openCustomForm("选择座位表模板",[["template","模板","select",[["small","小班 5×6（30席）"],["standard","标准 6×6（36席）"],["large58","58人 6×10（60席，双过道）"],["large56","大班 7×8（56席，双过道）"]]]],{template:"standard"},vals=>applySeatTemplate(vals.template))
+}
+function openSeatSettings(){
+ const l=getSeatLayout();
+ openCustomForm("自定义座位表",[["rows","行数（1–12）","number"],["cols","每行座位数（1–12）","number"],["aislesText","过道位置","text"],["podiumPosition","讲台位置","select",[["top","前方"],["bottom","后方"]]],["podiumLabel","讲台名称","text"]],
+ {rows:l.rows,cols:l.cols,aislesText:l.aisles.join(","),podiumPosition:l.podiumPosition,podiumLabel:l.podiumLabel||"讲台"},vals=>{
+  const rows=Math.floor(n(vals.rows)),cols=Math.floor(n(vals.cols));if(rows<1||rows>12||cols<1||cols>12)return toast("行数和列数请填写 1–12");
+  const aisles=String(vals.aislesText||"").split(/[,，\s]+/).filter(Boolean).map(Number).filter(v=>v>=1&&v<cols);
+  const newTotal=rows*cols;if(newTotal<l.rows*l.cols&&scoped(state.seats).some(s=>s.position>newTotal)&&!confirm("自定义后的座位数更少，超出范围的座位安排将被清除。是否继续？"))return;
+  Object.assign(l,{rows,cols,aisles:[...new Set(aisles)],podiumPosition:vals.podiumPosition,podiumLabel:vals.podiumLabel||"讲台",template:"自定义"});
+  state.seats=state.seats.filter(s=>s.classId!==state.currentClassId||s.position<=newTotal);save("自定义座位表已保存");renderSpecial("seats")
+ })
 }
 function assignSeat(pos){
  const students=scoped(state.students);if(!students.length)return toast("请先添加学生");
- const choices=students.map(s=>`${s.id}|${s.name}`).join("\n");const name=prompt("请输入学生姓名（当前班级）\n"+students.map(s=>s.name).join("、"));if(name===null)return;const stu=students.find(s=>s.name===name.trim());if(!stu)return toast("未找到该学生");
- let r=state.seats.find(x=>x.classId===state.currentClassId&&x.position===pos);if(!r){r={id:uid(),classId:state.currentClassId,position:pos,studentId:stu.id};state.seats.push(r)}else r.studentId=stu.id;save("座位已更新");renderSpecial("seats")
+ let r=state.seats.find(x=>x.classId===state.currentClassId&&x.position===pos);
+ const options=[["","空座位"],...students.map(s=>[s.id,s.name])];
+ openCustomForm(`安排 ${pos} 号座位`,[["studentId","学生","select",options]],{studentId:r?.studentId||""},vals=>{
+  if(!vals.studentId){state.seats=state.seats.filter(x=>!(x.classId===state.currentClassId&&x.position===pos))}
+  else if(!r){state.seats.push({id:uid(),classId:state.currentClassId,position:pos,studentId:vals.studentId})}
+  else r.studentId=vals.studentId;
+  save("座位已更新");renderSpecial("seats")
+ })
 }
-function clearSeats(){if(confirm("确定清空当前班级座位表吗？")){state.seats=state.seats.filter(x=>x.classId!==state.currentClassId);save("座位表已清空");renderSpecial("seats")}}
+function clearSeats(){if(confirm("确定清空当前班级所有座位安排吗？座位布局模板会保留。")){state.seats=state.seats.filter(x=>x.classId!==state.currentClassId);save("座位安排已清空");renderSpecial("seats")}}
 
-function openRecord(name,id){const c=configs[name];if(!c)return;const store=state[c.store],r=store.find(x=>x.id===id)||{classId:state.currentClassId,date:today()};if(name==="homework"&&!id){r.assigned=scoped(state.students).length;r.completed=0}openCustomForm(id?"编辑"+c.title:"新增"+c.title,c.fields,r,vals=>{
+function openRecord(name,id){const c=configs[name];if(!c)return;const store=state[c.store],r=store.find(x=>x.id===id)||{classId:state.currentClassId,date:today()};if(name==="reminders"&&!id){r.leadDays=7;r.level="重要";r.done=false}if(name==="homework"&&!id){r.assigned=scoped(state.students).length;r.completed=0}openCustomForm(id?"编辑"+c.title:"新增"+c.title,c.fields,r,vals=>{
  const required={todo:["date","title"],notes:["date","title"],reminders:["date","title"],growth:["date","type","title"],trace:["date","type","title"],prep:["topic"],homework:["date","content"],parents:["student","name"],visits:["date","student"],meetings:["date","title"],notices:["date","title"],classMeeting:["date","title"],duty:["date","students"],dorm:["dorm","student"],committee:["role","student"],activities:["date","title"]};
  if((required[name]||[]).some(k=>!String(vals[k]??"").trim()))return toast("请填写必要信息后再保存");
  if(name==="homework"){if(n(vals.assigned)<0||n(vals.completed)<0)return toast("作业人数不能为负数");if(n(vals.completed)>n(vals.assigned))return toast("已完成人数不能大于应交人数")}
  if(name==="growth"&&n(vals.hours)<0)return toast("学习时长不能为负数");
+ if(name==="reminders"&&n(vals.leadDays)<0)return toast("提前显示天数不能为负数");
  Object.assign(r,vals);if(!id){r.id=uid();r.classId=state.currentClassId;store.push(r)}save(c.title+"已保存");name==="todo"?showPage("todo"):renderGeneric(name)})}
 function editRecord(name,id){openRecord(name,id)}
 function deleteRecord(store,id){if(!confirm("确定删除这条记录吗？"))return;state[store]=state[store].filter(x=>x.id!==id);save("记录已删除");showPage(currentPage)}
 function toggleDone(store,id){const r=state[store].find(x=>x.id===id);if(r){r.done=!r.done;save(r.done?"任务已标记完成":"已取消完成");showPage(currentPage)}}
+function toggleReminder(id){const r=state.reminders.find(x=>x.id===id);if(r){r.done=!r.done;save(r.done?"提醒已完成":"已取消完成");showPage(currentPage)}}
 
 function fieldHtml(f,val){
  const [key,label,type,opt]=f,v=val??"";
@@ -583,6 +714,69 @@ function openCustomForm(title,fields,obj,onSave){
 }
 document.getElementById("modalCancel").onclick=()=>document.getElementById("modalMask").classList.remove("show");
 document.getElementById("modalSave").onclick=()=>{if(!modalCtx)return;const vals={};modalCtx.fields.forEach(f=>{const el=document.querySelector(`[data-field="${f[0]}"]`);let v=el?el.value:"";if(f[2]==="checkbox")v=v==="true";if(f[2]==="number")v=v===""?"":Number(v);vals[f[0]]=v});modalCtx.onSave(vals);document.getElementById("modalMask").classList.remove("show")};
+
+
+const FILE_BUCKET="teacher-files";
+let attachmentCtx=null;
+function fileIcon(a){
+ const t=(a.type||"").toLowerCase(),nm=(a.name||"").toLowerCase();
+ if(t.startsWith("image/")||/\.(jpg|jpeg|png|webp|heic)$/.test(nm))return "🖼️";
+ if(/\.(doc|docx)$/.test(nm))return "📝";
+ if(/\.(xls|xlsx)$/.test(nm))return "📊";
+ if(/\.pdf$/.test(nm))return "📕";
+ if(/\.(ppt|pptx)$/.test(nm))return "📽️";
+ return "📎"
+}
+function formatBytes(v){const b=n(v);if(b<1024)return b+" B";if(b<1048576)return (b/1024).toFixed(1)+" KB";return (b/1048576).toFixed(1)+" MB"}
+function attachmentRecord(){return attachmentCtx?state[attachmentCtx.store].find(x=>x.id===attachmentCtx.id):null}
+async function openAttachments(store,id){
+ const r=state[store].find(x=>x.id===id);if(!r)return toast("未找到记录");
+ attachmentCtx={store,id};r.attachments=Array.isArray(r.attachments)?r.attachments:[];
+ document.getElementById("attachmentTitle").textContent=`资料附件 · ${r.title||r.topic||"记录"}`;
+ document.getElementById("attachmentModal").classList.add("show");await renderAttachmentList()
+}
+async function renderAttachmentList(){
+ const r=attachmentRecord(),el=document.getElementById("attachmentList");if(!r||!el)return;
+ const list=r.attachments||[];if(!list.length){el.innerHTML=empty("📎","暂无附件","点击“上传资料”添加照片或文档");return}
+ el.innerHTML=list.map(a=>`<div class="attachment-item"><div class="attachment-thumb" id="thumb-${a.id}">${fileIcon(a)}</div><div class="attachment-info"><b>${esc(a.name)}</b><small>${formatBytes(a.size)} · ${esc((a.uploadedAt||"").replace("T"," ").slice(0,16))}</small></div><div class="attachment-actions"><button class="btn tiny" onclick="openAttachment('${a.id}')">打开</button><button class="btn tiny" onclick="downloadAttachment('${a.id}')">下载</button><button class="btn tiny danger" onclick="deleteAttachment('${a.id}')">删除</button></div></div>`).join("");
+ for(const a of list){
+  if((a.type||"").startsWith("image/")||/\.(jpg|jpeg|png|webp)$/i.test(a.name||"")){
+   try{const {data,error}=await sb.storage.from(FILE_BUCKET).createSignedUrl(a.path,300);if(!error&&data?.signedUrl){const e=document.getElementById("thumb-"+a.id);if(e)e.innerHTML=`<img src="${esc(data.signedUrl)}" alt="">`}}catch(_){}
+  }
+ }
+}
+function safeStorageName(name){const ext=(name.match(/\.[^.]+$/)||[""])[0].toLowerCase();const base=name.replace(/\.[^.]+$/,"").replace(/[^a-zA-Z0-9_-]+/g,"_").slice(0,60)||"file";return base+ext}
+async function uploadAttachments(files){
+ const r=attachmentRecord();if(!r||!currentUser)return;
+ for(const file of [...files]){
+  if(file.size>20*1024*1024){toast(`${file.name} 超过 20 MB，已跳过`);continue}
+  const path=`${currentUser.id}/${attachmentCtx.store}/${r.id}/${Date.now()}_${Math.random().toString(36).slice(2,7)}_${safeStorageName(file.name)}`;
+  updateCloudBadge("syncing");
+  try{
+   const {error}=await sb.storage.from(FILE_BUCKET).upload(path,file,{upsert:false,contentType:file.type||undefined});if(error)throw error;
+   r.attachments=r.attachments||[];r.attachments.push({id:uid(),name:file.name,type:file.type,size:file.size,path,uploadedAt:new Date().toISOString()});save("",true)
+  }catch(e){
+   console.error(e);toast(e.message?.includes("Bucket not found")?"附件存储尚未初始化，请先执行 v1.3 附件存储 SQL":"上传失败："+(e.message||"请检查网络"))
+  }
+ }
+ await renderAttachmentList();showPage(currentPage);toast("附件上传处理完成")
+}
+async function openAttachment(id){
+ const a=attachmentRecord()?.attachments?.find(x=>x.id===id);if(!a)return;
+ const {data,error}=await sb.storage.from(FILE_BUCKET).createSignedUrl(a.path,300);if(error)return toast("无法打开附件："+error.message);
+ window.open(data.signedUrl,"_blank","noopener")
+}
+async function downloadAttachment(id){
+ const a=attachmentRecord()?.attachments?.find(x=>x.id===id);if(!a)return;
+ const {data,error}=await sb.storage.from(FILE_BUCKET).download(a.path);if(error)return toast("下载失败："+error.message);
+ downloadBlob(data,a.name)
+}
+async function deleteAttachment(id){
+ const r=attachmentRecord(),a=r?.attachments?.find(x=>x.id===id);if(!a)return;
+ if(!confirm(`确定删除附件“${a.name}”吗？`))return;
+ const {error}=await sb.storage.from(FILE_BUCKET).remove([a.path]);if(error)return toast("删除失败："+error.message);
+ r.attachments=r.attachments.filter(x=>x.id!==id);save("附件已删除");await renderAttachmentList();showPage(currentPage)
+}
 
 function downloadBlob(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function backup(){const payload={...state,exportedAt:new Date().toISOString()};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),`教师工作台备份_${curClass().name}_${today()}.json`);toast("备份已导出")}
@@ -758,10 +952,13 @@ document.getElementById("closeClass").onclick=()=>document.getElementById("class
 document.getElementById("renameClassSave").onclick=()=>{const v=document.getElementById("renameClass").value.trim();if(!v)return toast("请输入班级名称");curClass().name=v;renderClassSelect();save("班级已重命名");showPage(currentPage)};
 document.getElementById("addClass").onclick=()=>{const v=document.getElementById("newClass").value.trim();if(!v)return toast("请输入班级名称");const c={id:uid(),name:v};state.classes.push(c);state.currentClassId=c.id;document.getElementById("newClass").value="";renderClassSelect();save("班级已添加");showPage(currentPage)};
 document.getElementById("cloneClass").onclick=()=>{const source=state.currentClassId;const name=prompt("新班级名称：",curClass().name+"-副本");if(!name)return;const nc={id:uid(),name:name.trim()};state.classes.push(nc);state.schedules.filter(x=>x.classId===source).forEach(x=>{const y=structuredClone(x);y.id=uid();y.classId=nc.id;state.schedules.push(y)});state.currentClassId=nc.id;renderClassSelect();save("班级框架已复制（仅复制课程表，不复制学生和历史记录）");document.getElementById("classModal").classList.remove("show");showPage(currentPage)};
-document.getElementById("deleteClass").onclick=()=>{if(state.classes.length<=1)return toast("至少保留一个班级");const cid=state.currentClassId,cname=curClass().name;const stores=["todos","notes","reminders","growth","traces","prep","schedules","students","homework","leaves","attendance","parents","visits","meetings","notices","seats","classMeetings","duties","dorms","committee","activities"];const count=stores.reduce((s,k)=>s+state[k].filter(x=>x.classId===cid).length,0)+state.exams.filter(x=>x.classId===cid).length;if(!confirm(`将删除“${cname}”及其 ${count} 条关联记录。此操作不可撤销，建议先导出备份。是否继续？`))return;const typed=prompt(`为避免误删，请输入班级名称：${cname}`);if(typed!==cname)return toast("班级名称不一致，已取消删除");const examIds=state.exams.filter(x=>x.classId===cid).map(x=>x.id);stores.forEach(k=>state[k]=state[k].filter(x=>x.classId!==cid));state.exams=state.exams.filter(x=>x.classId!==cid);state.scores=state.scores.filter(x=>!examIds.includes(x.examId));state.classes=state.classes.filter(c=>c.id!==cid);state.currentClassId=state.classes[0].id;renderClassSelect();save("班级及关联数据已删除");document.getElementById("classModal").classList.remove("show");showPage(currentPage)};
+document.getElementById("deleteClass").onclick=()=>{if(state.classes.length<=1)return toast("至少保留一个班级");const cid=state.currentClassId,cname=curClass().name;const stores=["todos","notes","reminders","growth","traces","prep","schedules","students","homework","leaves","attendance","parents","visits","meetings","notices","seats","seatLayouts","classMeetings","duties","dorms","committee","activities"];const count=stores.reduce((s,k)=>s+state[k].filter(x=>x.classId===cid).length,0)+state.exams.filter(x=>x.classId===cid).length;if(!confirm(`将删除“${cname}”及其 ${count} 条关联记录。此操作不可撤销，建议先导出备份。是否继续？`))return;const typed=prompt(`为避免误删，请输入班级名称：${cname}`);if(typed!==cname)return toast("班级名称不一致，已取消删除");const examIds=state.exams.filter(x=>x.classId===cid).map(x=>x.id);stores.forEach(k=>state[k]=state[k].filter(x=>x.classId!==cid));state.exams=state.exams.filter(x=>x.classId!==cid);state.scores=state.scores.filter(x=>!examIds.includes(x.examId));state.classes=state.classes.filter(c=>c.id!==cid);state.currentClassId=state.classes[0].id;renderClassSelect();save("班级及关联数据已删除");document.getElementById("classModal").classList.remove("show");showPage(currentPage)};
 document.getElementById("themeBtn").onclick=()=>document.getElementById("themeModal").classList.add("show");
 document.getElementById("closeTheme").onclick=()=>document.getElementById("themeModal").classList.remove("show");
 document.querySelectorAll("[data-theme]").forEach(b=>b.onclick=()=>{setTheme(b.dataset.theme);save("主题已切换");showPage(currentPage)});
+document.getElementById("attachmentUploadBtn").onclick=()=>document.getElementById("attachmentInput").click();
+document.getElementById("attachmentInput").onchange=e=>{if(e.target.files?.length)uploadAttachments(e.target.files);e.target.value=""};
+document.getElementById("attachmentClose").onclick=()=>document.getElementById("attachmentModal").classList.remove("show");
 document.getElementById("backupBtn").onclick=backup;
 document.getElementById("importBtn").onclick=openImport;
 document.getElementById("closeImport").onclick=()=>document.getElementById("importModal").classList.remove("show");
