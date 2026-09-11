@@ -149,7 +149,7 @@ body.auth-locked .app{visibility:hidden}
   .main{padding:10px 10px 24px}.topbar{top:7px;padding:8px 9px;gap:6px}.mobile-menu{display:block}.clock small,.status span{display:none}.clock{min-width:auto}.clock strong{font-size:11px}.class-select{max-width:125px}.grid-3,.grid-2,.grid-4{grid-template-columns:1fr}.hero{align-items:flex-start;flex-direction:column}.hero h2{font-size:23px}.actions{justify-content:flex-start}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.charts{grid-template-columns:1fr}.steps{grid-template-columns:repeat(2,1fr)}.seat-grid{grid-template-columns:repeat(3,95px)}
 }
 </style>
-<!-- v1.3 maintenance patch: configurable score subjects -->
+<!-- v1.3 maintenance patch: configurable score subjects + direct smart import -->
 </head>
 <body class="auth-locked">
 <div class="app">
@@ -228,12 +228,12 @@ body.auth-locked .app{visibility:hidden}
 </div></div>
 
 <div class="modal-mask" id="importModal"><div class="modal">
-  <h3>导入与自动归档</h3>
+  <h3 id="importTitle">导入与自动识别</h3>
   <div class="import-box">
     <div style="font-size:32px">📥</div>
-    <b>选择 Excel / Word / 图片 / JSON 文件</b>
-    <p style="font-size:12px;color:var(--muted);line-height:1.6">Excel 会根据表头自动识别学生档案、成绩、作业、请假、课程表、待办；Word 会优先识别表格并自动分类，正文同时归档；课程表图片可进行 OCR 尝试识别；JSON 可恢复本工作台备份。</p>
-    <input id="fileInput" type="file" accept=".xlsx,.xls,.docx,.json,.png,.jpg,.jpeg,.webp">
+    <b id="importLead">直接选择原始 Excel / Word / 图片 / JSON 文件</b>
+    <p id="importHelp" style="font-size:12px;color:var(--muted);line-height:1.6">Excel / CSV 会自动寻找真正的表头行，并识别常见字段名称；学生档案可识别性别、父亲/母亲姓名与联系方式，成绩表可直接识别科目并生成考试与成绩。一般不需要先改成固定模板。</p>
+    <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.docx,.json,.png,.jpg,.jpeg,.webp">
     <button class="btn primary" onclick="document.getElementById('fileInput').click()">选择文件</button>
   </div>
   <div id="importResult" style="margin-top:12px;font-size:12px;color:var(--muted)"></div>
@@ -510,25 +510,28 @@ function renderSpecial(name){
  if(name==="seats")return renderSeats(box);
  if(name==="classReminder")return renderClassReminder(box);
 }
+function studentContactText(name,phone){const a=String(name||"").trim(),b=String(phone||"").trim();return a&&b?`${esc(a)}<br><small>${esc(b)}</small>`:(a?esc(a):(b?esc(b):"—"))}
 function renderStudents(box){
  const arr=scoped(state.students);
- box.innerHTML=pageHeader("学生档案","学号、姓名、性别、出生日期、家长姓名、联系电话。",`<button class="btn primary" onclick="openStudent()">＋ 添加学生</button>`) +
- `<div class="glass"><div class="toolbar"><input class="grow" id="studentSearch" placeholder="搜索姓名 / 学号 / 家长 / 电话" oninput="renderStudentRows(this.value)"><select id="genderFilter" onchange="renderStudentRows(document.getElementById('studentSearch').value)"><option value="">全部性别</option><option>男</option><option>女</option></select><span style="font-size:11px;color:var(--muted)">共 ${arr.length} 人</span></div><div id="studentRows"></div></div>`;
+ box.innerHTML=pageHeader("学生档案","支持直接导入学校原始 Excel；可记录学生性别、父亲和母亲联系方式。",`<button class="btn" onclick="openImport('students')">⇧ 自动导入学生资料</button><button class="btn primary" onclick="openStudent()">＋ 添加学生</button>`) +
+ `<div class="glass"><div class="toolbar"><input class="grow" id="studentSearch" placeholder="搜索姓名 / 学号 / 父亲 / 母亲 / 电话" oninput="renderStudentRows(this.value)"><select id="genderFilter" onchange="renderStudentRows(document.getElementById('studentSearch').value)"><option value="">全部性别</option><option>男</option><option>女</option></select><span style="font-size:11px;color:var(--muted)">共 ${arr.length} 人</span></div><div id="studentRows"></div></div>`;
  renderStudentRows("");
 }
 function renderStudentRows(q=""){
  const el=document.getElementById("studentRows");if(!el)return;const gender=(document.getElementById("genderFilter")||{}).value||"";let arr=scoped(state.students).filter(x=>(!gender||x.gender===gender)&&JSON.stringify(x).toLowerCase().includes(q.toLowerCase()));
- if(!arr.length){el.innerHTML=empty("👩‍🎓","暂无匹配学生","可添加或从 Excel 导入");return}
- el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>学号</th><th>姓名</th><th>性别</th><th>出生日期</th><th>家长姓名</th><th>联系电话</th><th>操作</th></tr></thead><tbody>${arr.map(s=>`<tr><td>${esc(s.no)}</td><td><span class="avatar ${s.gender==="女"?"f":"m"}">${esc((s.name||"学生").slice(-2))}</span>${esc(s.name)}</td><td>${esc(s.gender)}</td><td>${esc(s.birth)}</td><td>${esc(s.parent)}</td><td>${esc(s.phone)}</td><td><button class="btn tiny" onclick="openStudent('${s.id}')">编辑</button> <button class="btn tiny danger" onclick="deleteStudent('${s.id}')">删除</button></td></tr>`).join("")}</tbody></table></div>`;
+ if(!arr.length){el.innerHTML=empty("👩‍🎓","暂无匹配学生","可手工添加，也可直接导入学校下发的 Excel");return}
+ el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>学号</th><th>姓名</th><th>性别</th><th>出生日期</th><th>父亲</th><th>母亲</th><th>其他监护人</th><th>操作</th></tr></thead><tbody>${arr.map(s=>`<tr><td>${esc(s.no||"")}</td><td><span class="avatar ${s.gender==="女"?"f":s.gender==="男"?"m":""}">${esc((s.name||"学生").slice(-2))}</span>${esc(s.name)}</td><td>${esc(s.gender||"—")}</td><td>${esc(s.birth||"—")}</td><td>${studentContactText(s.fatherName,s.fatherPhone)}</td><td>${studentContactText(s.motherName,s.motherPhone)}</td><td>${studentContactText(s.parent,s.phone)}</td><td><button class="btn tiny" onclick="openStudent('${s.id}')">编辑</button> <button class="btn tiny danger" onclick="deleteStudent('${s.id}')">删除</button></td></tr>`).join("")}</tbody></table></div>`;
 }
 function openStudent(id){
- const r=state.students.find(x=>x.id===id)||{classId:state.currentClassId,no:"",name:"",gender:"男",birth:"",parent:"",phone:""};
+ const r=state.students.find(x=>x.id===id)||{classId:state.currentClassId,no:"",name:"",gender:"",birth:"",fatherName:"",fatherPhone:"",motherName:"",motherPhone:"",parent:"",phone:""};
  openCustomForm(id?"编辑学生":"添加学生",[
-  ["no","学号","text"],["name","姓名","text"],["gender","性别","select",["男","女"]],["birth","出生日期","date"],["parent","家长姓名","text"],["phone","联系电话","tel"]
+  ["no","学号","text"],["name","姓名","text"],["gender","性别","select",[["","未填写"],["男","男"],["女","女"]]],["birth","出生日期","date"],
+  ["fatherName","父亲姓名","text"],["fatherPhone","父亲联系电话","tel"],["motherName","母亲姓名","text"],["motherPhone","母亲联系电话","tel"],
+  ["parent","其他监护人","text"],["phone","其他联系电话","tel"]
  ],r,(vals)=>{
   vals.name=String(vals.name||"").trim();vals.no=String(vals.no||"").trim();
   if(!vals.name)return toast("学生姓名不能为空");
-  if(vals.no&&state.students.some(s=>s.classId===state.currentClassId&&s.no===vals.no&&s.id!==r.id))return toast("该学号已存在，请检查后再保存");
+  if(vals.no&&state.students.some(s=>s.classId===state.currentClassId&&String(s.no)===vals.no&&s.id!==r.id))return toast("该学号已存在，请检查后再保存");
   Object.assign(r,vals);if(!id){r.id=uid();r.classId=state.currentClassId;state.students.push(r)}save("学生档案已保存");renderSpecial("students")})
 }
 function deleteStudent(id){
@@ -551,7 +554,7 @@ function scoreDisplay(score,subject){const v=getSubjectScore(score,subject);retu
 function renderScores(box){
  const exams=scoped(state.exams),students=scoped(state.students);const examId=(window.__examId&&exams.some(x=>x.id===window.__examId))?window.__examId:(exams[0]?.id||"");window.__examId=examId;
  let exam=exams.find(x=>x.id===examId),rows=exam?scoreRows(exam.id):[];
- box.innerHTML=pageHeader("成绩台账","支持自定义考试科目、成绩录入、自动总分/排名和历次趋势。",`<button class="btn" onclick="openExam()">＋ 新建考试</button><button class="btn primary" onclick="openScore()">录入成绩</button>`) +
+ box.innerHTML=pageHeader("成绩台账","支持直接导入学校原始成绩 Excel，自动识别学生、考试科目并生成成绩。",`<button class="btn" onclick="openImport('scores')">⇧ 自动导入成绩表</button><button class="btn" onclick="openExam()">＋ 新建考试</button><button class="btn primary" onclick="openScore()">录入成绩</button>`) +
  `<div class="grid-4">
   <div class="card stat"><div class="label">考试次数</div><div class="value">${exams.length}</div></div>
   <div class="card stat"><div class="label">已录成绩</div><div class="value">${state.scores.filter(s=>exams.some(e=>e.id===s.examId)).length}</div></div>
@@ -794,28 +797,117 @@ async function deleteAttachment(id){
 function downloadBlob(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function backup(){const payload={...state,exportedAt:new Date().toISOString()};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),`教师工作台备份_${curClass().name}_${today()}.json`);toast("备份已导出")}
 
-function openImport(){document.getElementById("importResult").innerHTML="";document.getElementById("importModal").classList.add("show")}
+let importMode="auto";
+function openImport(mode="auto"){
+ importMode=mode||"auto";
+ const title=document.getElementById("importTitle"),lead=document.getElementById("importLead"),help=document.getElementById("importHelp");
+ if(importMode==="students"){
+  title.textContent="自动导入学生资料";lead.textContent="直接选择学校下发的 Excel / CSV / Word";
+  help.textContent="不需要先改成固定模板。系统会自动寻找表头并识别学号、姓名、性别、出生日期、父亲姓名/电话、母亲姓名/电话及其他家长联系方式；再次导入同一批学生时会优先更新原档案。";
+ }else if(importMode==="scores"){
+  title.textContent="自动导入成绩表";lead.textContent="直接选择学校下发的 Excel / CSV / Word 成绩表";
+  help.textContent="不需要先整理成系统模板。系统会自动寻找姓名/学号列，识别语数英、物化生、政史地、道德与法治等科目，也会识别其他以数字成绩为主的科目列，并自动生成考试和学生成绩。";
+ }else{
+  title.textContent="导入与自动识别";lead.textContent="直接选择原始 Excel / Word / 图片 / JSON 文件";
+  help.textContent="Excel / CSV 会自动寻找真正的表头行，并识别学生档案、成绩、作业、请假、课程表和待办；Word 会识别表格；课程表图片可尝试 OCR；JSON 可恢复工作台备份。";
+ }
+ document.getElementById("importResult").innerHTML="";document.getElementById("importModal").classList.add("show")
+}
+function cleanText(v){return String(v??"").replace(/\u00a0/g," ").replace(/[\r\n]+/g," ").trim()}
+function normalizeHeader(v){return cleanText(v).toLowerCase().replace(/[\s　_\-—:：()（）\[\]【】\/\\]+/g,"").replace(/[，,。\.]/g,"")}
+function sameHeader(h,k){const a=normalizeHeader(h),b=normalizeHeader(k);if(!a||!b)return false;if(a===b)return true;return b.length>=3&&a.includes(b)}
+function val(row,keys){const hs=Object.keys(row);for(const k of keys){const b=normalizeHeader(k),hit=hs.find(h=>normalizeHeader(h)===b);if(hit!=null&&row[hit]!==undefined&&row[hit]!==null&&cleanText(row[hit])!=="")return row[hit]}for(const k of keys){const b=normalizeHeader(k);const hit=hs.find(h=>{const a=normalizeHeader(h);if(!sameHeader(h,k))return false;if(["联系电话","联系方式","手机号","手机号码","电话"].includes(b)&&/(父亲|母亲|爸爸|妈妈)/.test(a))return false;return true});if(hit!=null&&row[hit]!==undefined&&row[hit]!==null&&cleanText(row[hit])!=="")return row[hit]}return""}
+function normalizeGender(v){const x=normalizeHeader(v);if(!x)return"";if(["男","男生","男性","m","male","1"].includes(x))return"男";if(["女","女生","女性","f","female","2"].includes(x))return"女";if(x.startsWith("男"))return"男";if(x.startsWith("女"))return"女";return""}
+function normalizePhone(v){let x=cleanText(v);if(!x)return"";x=x.replace(/\.0$/," ").trim().replace(/\s+/g,"");return x}
+function normalizeDateText(v){const x=cleanText(v);if(!x)return"";let m=x.match(/^(\d{4})[\/\.\-年](\d{1,2})[\/\.\-月](\d{1,2})日?$/);if(m)return `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;m=x.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})$/);if(m)return `${m[3]}-${String(m[1]).padStart(2,"0")}-${String(m[2]).padStart(2,"0")}`;return x}
+function splitNamePhone(v){const x=cleanText(v);if(!x)return{name:"",phone:""};const pm=x.match(/(?:\+?86[- ]?)?1[3-9]\d{9}|0\d{2,3}[- ]?\d{7,8}/);const phone=pm?normalizePhone(pm[0]):"";let name=phone?x.replace(pm[0],"").replace(/[、,，;；\/\\()（）:：\-]/g," ").trim():x;if(/^\d[\d\- ]+$/.test(name))name="";return{name,phone}}
+const FIELD_ALIASES={
+ no:["学号","学生学号","学籍号","学籍编号","学生编号","编号","序号"],name:["姓名","学生姓名","学生","名字"],gender:["性别","学生性别"],birth:["出生日期","生日","出生年月","出生年月日"],
+ fatherName:["父亲姓名","爸爸姓名","父姓名","父亲","爸爸"],fatherPhone:["父亲电话","父亲联系电话","父亲手机号","父亲手机","父亲联系方式","爸爸电话","爸爸联系电话","爸爸手机号","爸爸联系方式","父电话","父手机号"],
+ motherName:["母亲姓名","妈妈姓名","母姓名","母亲","妈妈"],motherPhone:["母亲电话","母亲联系电话","母亲手机号","母亲手机","母亲联系方式","妈妈电话","妈妈联系电话","妈妈手机号","妈妈联系方式","母电话","母手机号"],
+ guardianName:["家长姓名","监护人姓名","家长","监护人","联系人姓名","联系人"],guardianPhone:["家长电话","家长手机号","家长联系方式","监护人电话","监护人手机号","监护人联系方式","联系电话","联系电话1","手机号","手机号码","电话"],
+ fatherCombined:["父亲姓名及联系电话","父亲姓名和电话","父亲及联系方式","父亲信息","爸爸信息"],motherCombined:["母亲姓名及联系电话","母亲姓名和电话","母亲及联系方式","母亲信息","妈妈信息"]
+};
+const SUBJECT_ALIAS_MAP=[
+ ["语文",["语文","语文成绩"]],["数学",["数学","数学成绩"]],["英语",["英语","外语","英语成绩","外语成绩"]],
+ ["物理",["物理","物理成绩"]],["化学",["化学","化学成绩"]],["生物",["生物","生物学","生物成绩"]],
+ ["历史",["历史","历史成绩"]],["政治",["政治","思想政治","思想品德","政治成绩"]],["道德与法治",["道德与法治","道法","道德法治"]],
+ ["地理",["地理","地理成绩"]],["体育",["体育","体育成绩"]],["科学",["科学","科学成绩"]],["信息技术",["信息技术","信息","信息科技","信息技术成绩"]],
+ ["音乐",["音乐"]],["美术",["美术"]],["劳动",["劳动"]],["技术",["通用技术","技术"]]
+];
+const META_HEADERS=["姓名","学生姓名","学生","学号","学生学号","学籍号","序号","编号","性别","出生日期","生日","班级","年级","考试名称","考试日期","日期","总分","总成绩","合计","排名","名次","班级排名","年级排名","备注","等级","考号","准考证号","座号","父亲","母亲","家长","监护人","电话","联系电话","手机号"];
+function canonicalSubject(h){const nh=normalizeHeader(h);if(!nh)return"";for(const [name,aliases] of SUBJECT_ALIAS_MAP){if(aliases.some(a=>nh.includes(normalizeHeader(a))))return name}return""}
+function isMetaHeader(h){const nh=normalizeHeader(h);return META_HEADERS.some(k=>nh===normalizeHeader(k)||nh.includes(normalizeHeader(k)))||Object.values(FIELD_ALIASES).flat().some(k=>nh===normalizeHeader(k))}
+function isSummaryName(name){return /^(合计|总计|平均|平均分|最高|最高分|最低|最低分|班级|年级|参考人数|实考人数|缺考人数|及格率|优秀率|标准差)$/i.test(cleanText(name))}
+function numericRate(rows,key){let filled=0,num=0;for(const r of rows.slice(0,120)){const v=r[key];if(v===""||v===null||v===undefined)continue;filled++;const x=String(v).replace(/%/g,"").trim();if(x!==""&&!Number.isNaN(Number(x)))num++}return filled?num/filled:0}
+function detectSubjectHeaders(rows){if(!rows.length)return[];const out=[],used=new Set();for(const h of Object.keys(rows[0])){if(!cleanText(h)||isMetaHeader(h))continue;let name=canonicalSubject(h);if(!name&&numericRate(rows,h)>=0.65&&normalizeHeader(h).length<=16&&!/(电话|手机|身份证|邮编|身高|体重|年龄|序号|编号|学号|考号|排名|名次|总分|合计)/.test(normalizeHeader(h)))name=cleanText(h).replace(/成绩$/," ").trim();if(name&&!used.has(name)){used.add(name);out.push({header:h,name})}}return out}
+function headerScore(row,mode="auto"){const cells=(row||[]).map(normalizeHeader).filter(Boolean);if(!cells.length)return-1;let score=0;const has=a=>cells.some(c=>a.some(x=>c===normalizeHeader(x)||c.includes(normalizeHeader(x))));if(has(FIELD_ALIASES.name))score+=7;if(has(FIELD_ALIASES.no))score+=3;if(has(FIELD_ALIASES.gender))score+=3;if(has(FIELD_ALIASES.fatherPhone)||has(FIELD_ALIASES.motherPhone)||has(FIELD_ALIASES.guardianPhone))score+=3;for(const [_,aliases] of SUBJECT_ALIAS_MAP)if(has(aliases))score+=2;if(cells.some(c=>/(总分|排名|名次)/.test(c)))score+=1;if(mode==="students"&&(has(FIELD_ALIASES.gender)||has(FIELD_ALIASES.fatherPhone)||has(FIELD_ALIASES.motherPhone)))score+=4;if(mode==="scores"&&SUBJECT_ALIAS_MAP.some(([_,a])=>has(a)))score+=4;return score}
+function matrixToRows(matrix,mode="auto"){
+ const nonempty=(matrix||[]).map(r=>(r||[]).map(x=>cleanText(x)));if(!nonempty.length)return{rows:[],headerIndex:-1,title:""};
+ let best=-1,bestScore=-1;for(let i=0;i<Math.min(30,nonempty.length);i++){const s=headerScore(nonempty[i],mode);if(s>bestScore){bestScore=s;best=i}}
+ if(best<0||bestScore<2)best=nonempty.findIndex(r=>r.some(Boolean));if(best<0)return{rows:[],headerIndex:-1,title:""};
+ const title=nonempty.slice(0,best).flat().filter(Boolean).join(" ").slice(0,160);
+ const seen={};const headers=nonempty[best].map((h,i)=>{let k=h||`列${i+1}`;if(seen[k]){seen[k]++;k=`${k}_${seen[k]}`}else seen[k]=1;return k});
+ const rows=[];for(const arr of nonempty.slice(best+1)){if(!arr.some(Boolean))continue;const o={};headers.forEach((h,i)=>o[h]=arr[i]??"");if(Object.values(o).some(v=>cleanText(v)!==""))rows.push(o)}
+ return{rows,headerIndex:best,title}
+}
+function findStudent(no,name){const ss=scoped(state.students),nno=cleanText(no),nn=cleanText(name);if(nno){const x=ss.find(s=>cleanText(s.no)===nno);if(x)return x}if(nn){const hits=ss.filter(s=>cleanText(s.name)===nn);if(hits.length===1)return hits[0]}return null}
+function assignIfPresent(obj,key,value){const v=cleanText(value);if(v)obj[key]=v}
+function upsertStudentFromRow(r){
+ const no=cleanText(val(r,FIELD_ALIASES.no)),name=cleanText(val(r,FIELD_ALIASES.name));if(!name||isSummaryName(name))return{student:null,added:false,updated:false,missingGender:false};
+ let s=findStudent(no,name),added=false;if(!s){s={id:uid(),classId:state.currentClassId,no:"",name:"",gender:"",birth:"",fatherName:"",fatherPhone:"",motherName:"",motherPhone:"",parent:"",phone:""};state.students.push(s);added=true}
+ assignIfPresent(s,"no",no);assignIfPresent(s,"name",name);
+ const g=normalizeGender(val(r,FIELD_ALIASES.gender));if(g)s.gender=g;
+ const birth=normalizeDateText(val(r,FIELD_ALIASES.birth));if(birth)s.birth=birth;
+ let fatherName=cleanText(val(r,FIELD_ALIASES.fatherName)),fatherPhone=normalizePhone(val(r,FIELD_ALIASES.fatherPhone)),motherName=cleanText(val(r,FIELD_ALIASES.motherName)),motherPhone=normalizePhone(val(r,FIELD_ALIASES.motherPhone));
+ const fc=splitNamePhone(val(r,FIELD_ALIASES.fatherCombined)),mc=splitNamePhone(val(r,FIELD_ALIASES.motherCombined));fatherName=fatherName||fc.name;fatherPhone=fatherPhone||fc.phone;motherName=motherName||mc.name;motherPhone=motherPhone||mc.phone;
+ assignIfPresent(s,"fatherName",fatherName);assignIfPresent(s,"fatherPhone",fatherPhone);assignIfPresent(s,"motherName",motherName);assignIfPresent(s,"motherPhone",motherPhone);
+ assignIfPresent(s,"parent",val(r,FIELD_ALIASES.guardianName));assignIfPresent(s,"phone",normalizePhone(val(r,FIELD_ALIASES.guardianPhone)));
+ return{student:s,added,updated:!added,missingGender:!g&&!s.gender}
+}
+function importStudentRows(rows){let added=0,updated=0,skipped=0,missingGender=0;for(const r of rows){const x=upsertStudentFromRow(r);if(!x.student){skipped++;continue}x.added?added++:updated++;if(x.missingGender)missingGender++}return{type:"学生档案",count:added+updated,added,updated,skipped,missingGender,detail:`新增 ${added}，更新 ${updated}${missingGender?`，${missingGender} 人性别未识别并保留为空`:""}`}}
+function inferExamName(rows,sheetName,sourceTitle="",sourceName=""){let name=cleanText(val(rows[0]||{},["考试名称","考试","测试名称","测验名称"]));if(name)return name;const title=cleanText(sourceTitle);const m=title.match(/[^ ]*(?:期中|期末|月考|周测|联考|摸底|模拟|考试|测验|成绩)[^ ]*/);if(m)return m[0].slice(0,50);const sn=cleanText(sheetName);if(sn&&!/^sheet\d*$/i.test(sn)&&!/^(工作表|表)\d*$/.test(sn))return sn.slice(0,50);return cleanText(sourceName).replace(/\.(xlsx|xls|csv|docx)$/i,"").slice(0,50)||"导入考试"}
+function importScoreRows(rows,sheetName,sourceTitle="",sourceName=""){
+ const subjects=detectSubjectHeaders(rows);if(!subjects.length)return{type:"成绩表未识别",count:0,detail:"没有识别出成绩科目"};
+ const examName=inferExamName(rows,sheetName,sourceTitle,sourceName),examDate=normalizeDateText(val(rows.find(r=>val(r,["考试日期","日期"]))||{},["考试日期","日期"]))||today();
+ let exam=state.exams.find(e=>e.classId===state.currentClassId&&cleanText(e.name)===examName&&cleanText(e.date)===examDate);if(!exam){exam={id:uid(),classId:state.currentClassId,name:examName,date:examDate,subjects:subjects.map(x=>x.name)};state.exams.push(exam)}else exam.subjects=[...new Set([...getExamSubjects(exam),...subjects.map(x=>x.name)])];
+ let scoreAdded=0,scoreUpdated=0,studentAdded=0,studentUpdated=0,skipped=0;for(const r of rows){const nm=cleanText(val(r,FIELD_ALIASES.name));if(!nm||isSummaryName(nm)){skipped++;continue}const u=upsertStudentFromRow(r);if(!u.student){skipped++;continue}u.added?studentAdded++:studentUpdated++;let sc=state.scores.find(x=>x.examId===exam.id&&x.studentId===u.student.id);if(!sc){sc={id:uid(),examId:exam.id,studentId:u.student.id,subjectScores:{}};state.scores.push(sc);scoreAdded++}else scoreUpdated++;for(const sub of subjects){const raw=r[sub.header];if(raw===""||raw===null||raw===undefined)continue;const txt=cleanText(raw).replace(/，/g,"");if(["缺考","缺","免考","未考","—","-"] .includes(txt))continue;const num=Number(txt.replace(/%$/,""));if(!Number.isNaN(num))setSubjectScore(sc,sub.name,num)} }
+ window.__examId=exam.id;return{type:"成绩台账",count:scoreAdded+scoreUpdated,detail:`${examName}：识别 ${subjects.length} 个科目；成绩新增 ${scoreAdded}、更新 ${scoreUpdated}；学生档案新增 ${studentAdded}、匹配/更新 ${studentUpdated}`}
+}
+function detectRowType(rows,sheetName,mode="auto"){
+ if(!rows.length)return"empty";const H=Object.keys(rows[0]);const hasName=H.some(h=>FIELD_ALIASES.name.some(k=>sameHeader(h,k))),subjects=detectSubjectHeaders(rows),studentSignals=H.filter(h=>[...FIELD_ALIASES.gender,...FIELD_ALIASES.birth,...FIELD_ALIASES.fatherName,...FIELD_ALIASES.fatherPhone,...FIELD_ALIASES.motherName,...FIELD_ALIASES.motherPhone,...FIELD_ALIASES.fatherCombined,...FIELD_ALIASES.motherCombined,...FIELD_ALIASES.guardianName,...FIELD_ALIASES.guardianPhone].some(k=>sameHeader(h,k))).length;
+ if(mode==="students")return hasName?"students":"unknown";if(mode==="scores")return hasName&&subjects.length?"scores":"unknown";
+ if(hasName&&subjects.length>=2&&(/成绩|考试|月考|期中|期末|联考|测验/.test(sheetName)||H.some(h=>/(总分|排名|名次)/.test(normalizeHeader(h)))||studentSignals<2))return"scores";if(hasName&&studentSignals>=1)return"students";if(hasName&&subjects.length)return"scores";return"other"
+}
 async function handleFile(file){
- const out=document.getElementById("importResult");out.textContent="正在识别文件…";
+ const out=document.getElementById("importResult");out.textContent="正在自动识别文件结构…";
  try{
   if(file.name.toLowerCase().endsWith(".json")){const txt=await file.text(),data=JSON.parse(txt);if(!data.version)throw new Error("不是教师工作台备份文件");state=normalizeState(data);state._syncMeta.lastLocalChange=new Date().toISOString();save("备份已恢复");renderClassSelect();setTheme(state.theme);showPage("dashboard");out.textContent="✅ JSON 备份已恢复。";return}
-  if(/\.(xlsx|xls)$/i.test(file.name)){if(typeof XLSX==="undefined")throw new Error("Excel 解析库未加载，请联网后重试");const buf=await file.arrayBuffer(),wb=XLSX.read(buf,{type:"array"});let total=0,details=[];for(const sn of wb.SheetNames){const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:""});const r=autoClassifyRows(rows,sn);total+=r.count;details.push(`${sn}：${r.type} ${r.count} 条`)}save("Excel 导入完成");out.innerHTML=`✅ 已自动归档 ${total} 条记录。<br>${details.map(esc).join("<br>")}`;showPage(currentPage);return}
-  if(/\.docx$/i.test(file.name)){if(typeof mammoth==="undefined")throw new Error("Word 解析库未加载，请联网后重试");const buf=await file.arrayBuffer();const htmlRes=await mammoth.convertToHtml({arrayBuffer:buf}),doc=new DOMParser().parseFromString(htmlRes.value,"text/html");let total=0,details=[];doc.querySelectorAll("table").forEach((table,idx)=>{const trs=[...table.querySelectorAll("tr")];if(trs.length<2)return;const headers=[...trs[0].querySelectorAll("th,td")].map(x=>x.textContent.trim());const rows=trs.slice(1).map(tr=>{const cells=[...tr.querySelectorAll("th,td")].map(x=>x.textContent.trim()),o={};headers.forEach((k,i)=>o[k||`列${i+1}`]=cells[i]||"");return o}).filter(r=>Object.values(r).some(Boolean));if(rows.length){const r=autoClassifyRows(rows,`Word表格${idx+1}`);total+=r.count;details.push(`表格${idx+1}：${r.type} ${r.count} 条`)}});const text=(doc.body.innerText||doc.body.textContent||"").trim();if(text){state.notes.push({id:uid(),classId:state.currentClassId,date:today(),title:`Word导入原文：${file.name}`,tag:total?"导入原文":"自动归档",content:text})}save("Word 导入完成");out.innerHTML=total?`✅ 已识别并归档 ${total} 条表格记录；原文同时保存到笔记。<br>${details.map(esc).join("<br>")}`:`✅ Word 未识别出可分类表格，原文已归档到“待办备忘 → 笔记”。`;showPage(currentPage);return}
-  if(/\.(png|jpg|jpeg|webp)$/i.test(file.name)){if(typeof Tesseract==="undefined")throw new Error("图片 OCR 库未加载，请联网后重试");out.textContent="正在 OCR 识别课程表图片，首次加载识别引擎可能稍慢…";const res=await Tesseract.recognize(file,"chi_sim+eng");const text=res.data.text||"";const count=parseScheduleOCR(text);state.notes.push({id:uid(),classId:state.currentClassId,date:today(),title:`课程表图片OCR：${file.name}`,tag:"OCR原文",content:text});save("课程表图片识别完成");out.textContent=count?`✅ OCR 完成，自动识别并加入 ${count} 节课程；原始识别文字已同时保存在笔记中。`:`⚠️ OCR 已完成，但未可靠识别出“星期+节次+科目”的课程行。原文已保存到笔记，可据此手工补充课程。`;return}
-  throw new Error("暂不支持该文件类型");
- }catch(e){out.textContent="❌ "+e.message}
+  if(/\.(xlsx|xls|csv)$/i.test(file.name)){
+   if(typeof XLSX==="undefined")throw new Error("Excel 解析库未加载，请联网后重试");let wb;if(/\.csv$/i.test(file.name))wb=XLSX.read(await file.text(),{type:"string"});else wb=XLSX.read(await file.arrayBuffer(),{type:"array"});let total=0,details=[],recognized=0;
+   for(const sn of wb.SheetNames){const matrix=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:"",raw:false,blankrows:false}),parsed=matrixToRows(matrix,importMode);if(!parsed.rows.length){details.push(`${sn}：空表或未发现数据`);continue}const r=autoClassifyRows(parsed.rows,sn,parsed.title,file.name,importMode);total+=r.count;if(r.count)recognized++;details.push(`${sn}：${r.type}${r.detail?`（${r.detail}）`:` ${r.count} 条`}`)}
+   if(!recognized)throw new Error("没有可靠识别出学生档案或成绩结构。请把这份原始文件发给管理者核对表头，不需要您自己重新整理模板。");save("Excel 自动导入完成");out.innerHTML=`✅ 已直接识别并写入 ${total} 条记录，无需另做模板。<br>${details.map(esc).join("<br>")}`;showPage(currentPage);return
+  }
+  if(/\.docx$/i.test(file.name)){
+   if(typeof mammoth==="undefined")throw new Error("Word 解析库未加载，请联网后重试");const buf=await file.arrayBuffer();const htmlRes=await mammoth.convertToHtml({arrayBuffer:buf}),doc=new DOMParser().parseFromString(htmlRes.value,"text/html");let total=0,details=[],recognized=0;doc.querySelectorAll("table").forEach((table,idx)=>{const matrix=[...table.querySelectorAll("tr")].map(tr=>[...tr.querySelectorAll("th,td")].map(x=>cleanText(x.textContent)));const parsed=matrixToRows(matrix,importMode);if(parsed.rows.length){const r=autoClassifyRows(parsed.rows,`Word表格${idx+1}`,parsed.title,file.name,importMode);total+=r.count;if(r.count)recognized++;details.push(`表格${idx+1}：${r.type}${r.detail?`（${r.detail}）`:""}`)}});const text=(doc.body.innerText||doc.body.textContent||"").trim();if(text)state.notes.push({id:uid(),classId:state.currentClassId,date:today(),title:`Word导入原文：${file.name}`,tag:recognized?"导入原文":"待分类",content:text});save("Word 导入完成");out.innerHTML=recognized?`✅ 已直接识别并写入 ${total} 条表格记录；Word 原文同时保存在笔记中。<br>${details.map(esc).join("<br>")}`:`⚠️ Word 表格未可靠识别为学生档案或成绩，原文已保存到笔记。您可以把原文件发给管理者继续适配，无需自行改模板。`;showPage(currentPage);return
+  }
+  if(/\.(png|jpg|jpeg|webp)$/i.test(file.name)){if(typeof Tesseract==="undefined")throw new Error("图片 OCR 库未加载，请联网后重试");out.textContent="正在 OCR 识别课程表图片，首次加载识别引擎可能稍慢…";const res=await Tesseract.recognize(file,"chi_sim+eng");const text=res.data.text||"";const count=parseScheduleOCR(text);state.notes.push({id:uid(),classId:state.currentClassId,date:today(),title:`课程表图片OCR：${file.name}`,tag:"OCR原文",content:text});save("课程表图片识别完成");out.textContent=count?`✅ OCR 完成，自动识别并加入 ${count} 节课程；原始识别文字已同时保存在笔记中。`:`⚠️ OCR 已完成，但未可靠识别课程行，原文已保存到笔记。`;return}
+  throw new Error("暂不支持该文件类型")
+ }catch(e){console.error(e);out.textContent="❌ "+e.message}
 }
-function val(row,keys){for(const k of keys){const hit=Object.keys(row).find(h=>h.trim().toLowerCase()===k.toLowerCase()||h.includes(k));if(hit!=null&&row[hit]!==undefined)return row[hit]}return""}
 function parseScheduleOCR(text){let count=0;const dayMap={"星期一":"周一","星期二":"周二","星期三":"周三","星期四":"周四","星期五":"周五","周一":"周一","周二":"周二","周三":"周三","周四":"周四","周五":"周五"};text.split(/\r?\n/).map(x=>x.replace(/\s+/g," ").trim()).filter(Boolean).forEach(line=>{const dm=line.match(/(星期[一二三四五]|周[一二三四五])/);const pm=line.match(/(?:第\s*)?([1-8])\s*(?:节)?/);if(!dm||!pm)return;const day=dayMap[dm[1]],period=Number(pm[1]);const subjects=["语文","数学","英语","历史","政治","地理","物理","化学","生物","体育","音乐","美术","信息","班会","自习"];const subject=subjects.find(k=>line.includes(k));if(subject){state.schedules.push({id:uid(),classId:state.currentClassId,day,period,subject,teacher:"",room:""});count++}});return count}
-function autoClassifyRows(rows,sheetName){
- if(!rows.length)return{type:"空表",count:0};const H=Object.keys(rows[0]).join("|");
- if(/学号/.test(H)&&/姓名/.test(H)){let count=0;rows.forEach(r=>{const no=String(val(r,["学号"])||"").trim(),name=String(val(r,["姓名"])||"").trim();if(!name)return;let s=no?state.students.find(x=>x.classId===state.currentClassId&&String(x.no)===no):null;if(s)Object.assign(s,{name,gender:val(r,["性别"])||s.gender||"男",birth:val(r,["出生日期","生日"])||s.birth,parent:val(r,["家长姓名","家长"])||s.parent,phone:val(r,["联系电话","电话","手机号"])||s.phone});else state.students.push({id:uid(),classId:state.currentClassId,no,name,gender:val(r,["性别"])||"男",birth:val(r,["出生日期","生日"]),parent:val(r,["家长姓名","家长"]),phone:val(r,["联系电话","电话","手机号"])});count++});return{type:"学生档案",count}}
- if(/姓名/.test(H)){const meta=/^(姓名|学生姓名|学号|考试名称|考试日期|日期|总分|排名|班级|备注)$/;const subjectHeaders=Object.keys(rows[0]).filter(k=>!meta.test(String(k).trim())&&rows.some(r=>r[k]!==""&&r[k]!==null&&r[k]!==undefined&&!Number.isNaN(Number(r[k]))));if(subjectHeaders.length){const examName=val(rows[0],["考试名称"])||sheetName||"导入考试",exam={id:uid(),classId:state.currentClassId,name:examName,date:val(rows[0],["考试日期","日期"])||today(),subjects:subjectHeaders};state.exams.push(exam);let count=0;rows.forEach(r=>{const name=val(r,["姓名","学生姓名"]);let stu=scoped(state.students).find(s=>s.name===name);if(!stu&&name){stu={id:uid(),classId:state.currentClassId,no:val(r,["学号"]),name,gender:"男",birth:"",parent:"",phone:""};state.students.push(stu)}if(stu){const score={id:uid(),examId:exam.id,studentId:stu.id,subjectScores:{}};subjectHeaders.forEach(subject=>{const raw=r[subject];score.subjectScores[subject]=raw===""?"":Number(raw);const key=LEGACY_SCORE_KEYS[subject];if(key)score[key]=score.subjectScores[subject]});state.scores.push(score);count++}});return{type:"成绩台账",count}}}
+function autoClassifyRows(rows,sheetName,sourceTitle="",sourceName="",mode="auto"){
+ if(!rows.length)return{type:"空表",count:0};const kind=detectRowType(rows,sheetName,mode);
+ if(kind==="students")return importStudentRows(rows);
+ if(kind==="scores")return importScoreRows(rows,sheetName,sourceTitle,sourceName);
+ if(mode==="students")return{type:"未识别为学生档案",count:0,detail:"未找到姓名以及性别/家长等常见字段"};
+ if(mode==="scores")return{type:"未识别为成绩表",count:0,detail:"未找到姓名和可识别的科目成绩列"};
+ const H=Object.keys(rows[0]).join("|");
  if(/作业内容/.test(H)){rows.forEach(r=>state.homework.push({id:uid(),classId:state.currentClassId,date:val(r,["日期"])||today(),type:val(r,["类型"])||"家庭作业",content:val(r,["作业内容"]),assigned:n(val(r,["应交人数","应交"])),completed:n(val(r,["已完成人数","完成","已交"])),note:val(r,["备注"])}));return{type:"作业管理",count:rows.length}}
  if(/请假/.test(H)){rows.forEach(r=>state.leaves.push({id:uid(),classId:state.currentClassId,date:val(r,["日期"])||today(),student:val(r,["学生","姓名","学生姓名"]),type:val(r,["请假类型"])||"校内病假",reason:val(r,["事由","原因"]),duration:val(r,["请假时长","时长"]),note:val(r,["备注"]),cancelled:String(val(r,["是否销假","销假"])).includes("是")}));return{type:"请假管理",count:rows.length}}
  if(/(星期|周一|节次|科目|课程)/.test(H)){let count=0;rows.forEach(r=>{const day=val(r,["星期","周"]),period=Number(val(r,["节次","第几节"]))||1,subject=val(r,["科目","课程"]);if(day&&subject){state.schedules.push({id:uid(),classId:state.currentClassId,day,period,subject,teacher:val(r,["教师","老师"]),room:val(r,["教室","地点"])});count++}});return{type:"课程表",count}}
  if(/(待办|事项|任务)/.test(H)){rows.forEach(r=>state.todos.push({id:uid(),classId:state.currentClassId,date:val(r,["日期"])||today(),time:val(r,["时间"]),type:val(r,["类型"])||"个人",category:val(r,["分类"])||"管理类",title:val(r,["待办","事项","任务","标题"]),note:val(r,["备注"]),done:false}));return{type:"待办事项",count:rows.length}}
- state.notes.push({id:uid(),classId:state.currentClassId,date:today(),title:`未识别表：${sheetName}`,tag:"待分类",content:JSON.stringify(rows,null,2)});return{type:"未识别，已归档到笔记",count:rows.length}
+ state.notes.push({id:uid(),classId:state.currentClassId,date:today(),title:`未识别表：${sheetName}`,tag:"待分类",content:JSON.stringify(rows,null,2)});return{type:"未识别，已归档到笔记",count:0}
 }
 
 function updateCloudBadge(status){
