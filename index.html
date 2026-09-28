@@ -232,7 +232,7 @@ body.auth-locked .app{visibility:hidden}
   <div class="import-box">
     <div style="font-size:32px">📥</div>
     <b id="importLead">直接选择原始 Excel / Word / 图片 / JSON 文件</b>
-    <p id="importHelp" style="font-size:12px;color:var(--muted);line-height:1.6">Excel / CSV 会自动寻找真正的表头行，并识别常见字段名称；学生档案可识别性别、父亲/母亲姓名与联系方式，成绩表可直接识别科目并生成考试与成绩。一般不需要先改成固定模板。</p>
+    <p id="importHelp" style="font-size:12px;color:var(--muted);line-height:1.6">Excel / CSV 会自动寻找真正的表头行，并识别常见字段名称；学生档案可识别性别、父亲/母亲姓名与联系方式，成绩表可直接识别科目并生成考试与成绩；如果原表只有“姓名 + 成绩”而没有写科目，系统会在导入时只询问一次科目，不需要修改原 Excel。一般不需要先改成固定模板。</p>
     <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.docx,.json,.png,.jpg,.jpeg,.webp">
     <button class="btn primary" onclick="document.getElementById('fileInput').click()">选择文件</button>
   </div>
@@ -840,7 +840,10 @@ function canonicalSubject(h){const nh=normalizeHeader(h);if(!nh)return"";for(con
 function isMetaHeader(h){const nh=normalizeHeader(h);return META_HEADERS.some(k=>nh===normalizeHeader(k)||nh.includes(normalizeHeader(k)))||Object.values(FIELD_ALIASES).flat().some(k=>nh===normalizeHeader(k))}
 function isSummaryName(name){return /^(合计|总计|平均|平均分|最高|最高分|最低|最低分|班级|年级|参考人数|实考人数|缺考人数|及格率|优秀率|标准差)$/i.test(cleanText(name))}
 function numericRate(rows,key){let filled=0,num=0;for(const r of rows.slice(0,120)){const v=r[key];if(v===""||v===null||v===undefined)continue;filled++;const x=String(v).replace(/%/g,"").trim();if(x!==""&&!Number.isNaN(Number(x)))num++}return filled?num/filled:0}
-function detectSubjectHeaders(rows){if(!rows.length)return[];const out=[],used=new Set();for(const h of Object.keys(rows[0])){if(!cleanText(h)||isMetaHeader(h))continue;let name=canonicalSubject(h);if(!name&&numericRate(rows,h)>=0.65&&normalizeHeader(h).length<=16&&!/(电话|手机|身份证|邮编|身高|体重|年龄|序号|编号|学号|考号|排名|名次|总分|合计)/.test(normalizeHeader(h)))name=cleanText(h).replace(/成绩$/," ").trim();if(name&&!used.has(name)){used.add(name);out.push({header:h,name})}}return out}
+const GENERIC_SCORE_HEADERS=["成绩","分数","得分","卷面分","卷面成绩","考试成绩","测试成绩","测验成绩","本次成绩"];
+function inferSubjectFromContext(...parts){const txt=normalizeHeader(parts.filter(Boolean).join(" "));if(!txt)return"";for(const [name,aliases] of SUBJECT_ALIAS_MAP){if(aliases.some(a=>txt.includes(normalizeHeader(a))))return name}return""}
+function isGenericScoreHeader(h){const nh=normalizeHeader(h);return GENERIC_SCORE_HEADERS.some(x=>nh===normalizeHeader(x))}
+function detectSubjectHeaders(rows){if(!rows.length)return[];const out=[],used=new Set();for(const h of Object.keys(rows[0])){if(!cleanText(h)||isMetaHeader(h))continue;let name=canonicalSubject(h),generic=false;if(!name&&isGenericScoreHeader(h)&&numericRate(rows,h)>=0.5){name="__GENERIC_SCORE__";generic=true}if(!name&&numericRate(rows,h)>=0.65&&normalizeHeader(h).length<=16&&!/(电话|手机|身份证|邮编|身高|体重|年龄|序号|编号|学号|考号|排名|名次|总分|合计)/.test(normalizeHeader(h))){name=cleanText(h).replace(/成绩$/," ").trim();if(!name&&isGenericScoreHeader(h)){name="__GENERIC_SCORE__";generic=true}}if(name&&!used.has(name)){used.add(name);out.push({header:h,name,generic})}}return out}
 function headerScore(row,mode="auto"){const cells=(row||[]).map(normalizeHeader).filter(Boolean);if(!cells.length)return-1;let score=0;const has=a=>cells.some(c=>a.some(x=>c===normalizeHeader(x)||c.includes(normalizeHeader(x))));if(has(FIELD_ALIASES.name))score+=7;if(has(FIELD_ALIASES.no))score+=3;if(has(FIELD_ALIASES.gender))score+=3;if(has(FIELD_ALIASES.fatherPhone)||has(FIELD_ALIASES.motherPhone)||has(FIELD_ALIASES.guardianPhone))score+=3;for(const [_,aliases] of SUBJECT_ALIAS_MAP)if(has(aliases))score+=2;if(cells.some(c=>/(总分|排名|名次)/.test(c)))score+=1;if(mode==="students"&&(has(FIELD_ALIASES.gender)||has(FIELD_ALIASES.fatherPhone)||has(FIELD_ALIASES.motherPhone)))score+=4;if(mode==="scores"&&SUBJECT_ALIAS_MAP.some(([_,a])=>has(a)))score+=4;return score}
 function matrixToRows(matrix,mode="auto"){
  const nonempty=(matrix||[]).map(r=>(r||[]).map(x=>cleanText(x)));if(!nonempty.length)return{rows:[],headerIndex:-1,title:""};
@@ -868,11 +871,30 @@ function upsertStudentFromRow(r){
 function importStudentRows(rows){let added=0,updated=0,skipped=0,missingGender=0;for(const r of rows){const x=upsertStudentFromRow(r);if(!x.student){skipped++;continue}x.added?added++:updated++;if(x.missingGender)missingGender++}return{type:"学生档案",count:added+updated,added,updated,skipped,missingGender,detail:`新增 ${added}，更新 ${updated}${missingGender?`，${missingGender} 人性别未识别并保留为空`:""}`}}
 function inferExamName(rows,sheetName,sourceTitle="",sourceName=""){let name=cleanText(val(rows[0]||{},["考试名称","考试","测试名称","测验名称"]));if(name)return name;const title=cleanText(sourceTitle);const m=title.match(/[^ ]*(?:期中|期末|月考|周测|联考|摸底|模拟|考试|测验|成绩)[^ ]*/);if(m)return m[0].slice(0,50);const sn=cleanText(sheetName);if(sn&&!/^sheet\d*$/i.test(sn)&&!/^(工作表|表)\d*$/.test(sn))return sn.slice(0,50);return cleanText(sourceName).replace(/\.(xlsx|xls|csv|docx)$/i,"").slice(0,50)||"导入考试"}
 function importScoreRows(rows,sheetName,sourceTitle="",sourceName=""){
- const subjects=detectSubjectHeaders(rows);if(!subjects.length)return{type:"成绩表未识别",count:0,detail:"没有识别出成绩科目"};
- const examName=inferExamName(rows,sheetName,sourceTitle,sourceName),examDate=normalizeDateText(val(rows.find(r=>val(r,["考试日期","日期"]))||{},["考试日期","日期"]))||today();
- let exam=state.exams.find(e=>e.classId===state.currentClassId&&cleanText(e.name)===examName&&cleanText(e.date)===examDate);if(!exam){exam={id:uid(),classId:state.currentClassId,name:examName,date:examDate,subjects:subjects.map(x=>x.name)};state.exams.push(exam)}else exam.subjects=[...new Set([...getExamSubjects(exam),...subjects.map(x=>x.name)])];
- let scoreAdded=0,scoreUpdated=0,studentAdded=0,studentUpdated=0,skipped=0;for(const r of rows){const nm=cleanText(val(r,FIELD_ALIASES.name));if(!nm||isSummaryName(nm)){skipped++;continue}const u=upsertStudentFromRow(r);if(!u.student){skipped++;continue}u.added?studentAdded++:studentUpdated++;let sc=state.scores.find(x=>x.examId===exam.id&&x.studentId===u.student.id);if(!sc){sc={id:uid(),examId:exam.id,studentId:u.student.id,subjectScores:{}};state.scores.push(sc);scoreAdded++}else scoreUpdated++;for(const sub of subjects){const raw=r[sub.header];if(raw===""||raw===null||raw===undefined)continue;const txt=cleanText(raw).replace(/，/g,"");if(["缺考","缺","免考","未考","—","-"] .includes(txt))continue;const num=Number(txt.replace(/%$/,""));if(!Number.isNaN(num))setSubjectScore(sc,sub.name,num)} }
- window.__examId=exam.id;return{type:"成绩台账",count:scoreAdded+scoreUpdated,detail:`${examName}：识别 ${subjects.length} 个科目；成绩新增 ${scoreAdded}、更新 ${scoreUpdated}；学生档案新增 ${studentAdded}、匹配/更新 ${studentUpdated}`}
+ let subjects=detectSubjectHeaders(rows);if(!subjects.length)return{type:"成绩表未识别",count:0,detail:"没有识别出成绩科目"};
+ const hasGeneric=subjects.some(s=>s.generic||s.name==="__GENERIC_SCORE__");
+ if(hasGeneric){
+  let subjectName=inferSubjectFromContext(sheetName,sourceTitle,sourceName);
+  if(!subjectName){
+   const existing=[...new Set(scoped(state.exams).flatMap(e=>getExamSubjects(e)).filter(Boolean))];
+   const hint=existing.length===1?existing[0]:"";
+   subjectName=cleanText(window.prompt(`已识别为“姓名 + 成绩”的单科成绩表，但原文件没有写科目名称。\n请输入本次成绩对应的科目（例如：数学）。\n无需修改 Excel 原文件。`,hint)||"");
+  }
+  if(!subjectName)return{type:"单科成绩表待确认",count:0,detail:"已识别出姓名和成绩，但原文件没有科目名称；已取消导入，原文件无需修改"};
+  subjects=subjects.map(s=>(s.generic||s.name==="__GENERIC_SCORE__")?{...s,name:subjectName,generic:true}:s);
+ }
+ const examName=inferExamName(rows,sheetName,sourceTitle,sourceName),explicitExamDate=normalizeDateText(val(rows.find(r=>val(r,["考试日期","日期"]))||{},["考试日期","日期"])),examDate=explicitExamDate||today();
+ let exam=explicitExamDate?state.exams.find(e=>e.classId===state.currentClassId&&cleanText(e.name)===examName&&cleanText(e.date)===examDate):state.exams.find(e=>e.classId===state.currentClassId&&cleanText(e.name)===examName);if(!exam){exam={id:uid(),classId:state.currentClassId,name:examName,date:examDate,subjects:subjects.map(x=>x.name)};state.exams.push(exam)}else exam.subjects=[...new Set([...getExamSubjects(exam),...subjects.map(x=>x.name)])];
+ let scoreAdded=0,scoreUpdated=0,studentAdded=0,studentUpdated=0,skipped=0,noScore=0;
+ for(const r of rows){
+  const nm=cleanText(val(r,FIELD_ALIASES.name));if(!nm||isSummaryName(nm)){skipped++;continue}
+  const u=upsertStudentFromRow(r);if(!u.student){skipped++;continue}u.added?studentAdded++:studentUpdated++;
+  const valid=[];for(const sub of subjects){const raw=r[sub.header];if(raw===""||raw===null||raw===undefined)continue;const txt=cleanText(raw).replace(/，/g,"");if(["缺考","缺","免考","未考","—","-"] .includes(txt))continue;const num=Number(txt.replace(/%$/,"").trim());if(!Number.isNaN(num))valid.push([sub.name,num])}
+  if(!valid.length){noScore++;continue}
+  let sc=state.scores.find(x=>x.examId===exam.id&&x.studentId===u.student.id);if(!sc){sc={id:uid(),examId:exam.id,studentId:u.student.id,subjectScores:{}};state.scores.push(sc);scoreAdded++}else scoreUpdated++;
+  valid.forEach(([name,num])=>setSubjectScore(sc,name,num));
+ }
+ window.__examId=exam.id;return{type:"成绩台账",count:scoreAdded+scoreUpdated,detail:`${examName}：识别 ${subjects.length} 个科目（${subjects.map(x=>x.name).join("、")}）；成绩新增 ${scoreAdded}、更新 ${scoreUpdated}${noScore?`，${noScore} 人成绩为空/缺考未写入`:""}；学生档案新增 ${studentAdded}、匹配/更新 ${studentUpdated}`}
 }
 function detectRowType(rows,sheetName,mode="auto"){
  if(!rows.length)return"empty";const H=Object.keys(rows[0]);const hasName=H.some(h=>FIELD_ALIASES.name.some(k=>sameHeader(h,k))),subjects=detectSubjectHeaders(rows),studentSignals=H.filter(h=>[...FIELD_ALIASES.gender,...FIELD_ALIASES.birth,...FIELD_ALIASES.fatherName,...FIELD_ALIASES.fatherPhone,...FIELD_ALIASES.motherName,...FIELD_ALIASES.motherPhone,...FIELD_ALIASES.fatherCombined,...FIELD_ALIASES.motherCombined,...FIELD_ALIASES.guardianName,...FIELD_ALIASES.guardianPhone].some(k=>sameHeader(h,k))).length;
